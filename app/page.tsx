@@ -24,6 +24,14 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("overview");
 
+  // Command Deck Quick Actions Modal
+  const [isCommandDeckOpen, setIsCommandDeckOpen] = useState(false);
+
+  // Strategic Focus State
+  const [strategicFocus, setStrategicFocus] = useState("Scale Dailygen to MVP Release");
+  const [isEditingFocus, setIsEditingFocus] = useState(false);
+  const [focusInput, setFocusInput] = useState("");
+
   // Tasks state
   const [tasks, setTasks] = useState<Task[]>([
     { id: "1", title: "today gym", completed: true },
@@ -39,7 +47,7 @@ export default function DashboardPage() {
   const [newCountTitle, setNewCountTitle] = useState("");
   const [newCountDate, setNewCountDate] = useState("");
 
-  // Day Debrief state - initialized without top-level new Date() to pass Next.js build
+  // Day Debrief state - initialized without top-level new Date() to pass Next.js static build
   const [selectedDebriefDate, setSelectedDebriefDate] = useState<string>("");
   const [debriefEntries, setDebriefEntries] = useState<Record<string, DebriefEntry>>({});
   const [currentNotes, setCurrentNotes] = useState("");
@@ -52,6 +60,9 @@ export default function DashboardPage() {
     setMounted(true);
     const today = new Date().toISOString().split("T")[0];
     setSelectedDebriefDate(today);
+
+    const savedFocus = localStorage.getItem("dg_strategic_focus");
+    if (savedFocus) setStrategicFocus(savedFocus);
 
     const savedTasks = localStorage.getItem("dg_tasks");
     if (savedTasks) {
@@ -77,7 +88,7 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Update debrief fields when selecting a date
+  // Update debrief fields on date pick
   const handleDateChange = (dateStr: string) => {
     setSelectedDebriefDate(dateStr);
     const entry = debriefEntries[dateStr];
@@ -92,7 +103,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Save debrief
+  // Save debrief to LocalStorage
   const handleSaveDebrief = () => {
     if (!selectedDebriefDate) return;
     const updated = {
@@ -115,7 +126,7 @@ export default function DashboardPage() {
     if (!files) return;
 
     if (currentImages.length + files.length > 5) {
-      alert("You can upload a maximum of 5 images per day.");
+      alert("You can upload up to 5 images per day.");
       return;
     }
 
@@ -179,21 +190,37 @@ export default function DashboardPage() {
     return { days, hours, expired: false };
   };
 
+  const handleSaveStrategicFocus = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!focusInput.trim()) return;
+    setStrategicFocus(focusInput.trim());
+    localStorage.setItem("dg_strategic_focus", focusInput.trim());
+    setIsEditingFocus(false);
+  };
+
   const completedCount = tasks.filter((t) => t.completed).length;
   const completionRate = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
   return (
     <div className="min-h-screen flex bg-slate-950 text-slate-100 antialiased selection:bg-amber-400 selection:text-slate-900">
       {/* SIDEBAR */}
-      <aside className="w-64 border-r border-slate-800 bg-slate-950 flex flex-col justify-between p-5 select-none transition-all">
+      <aside className="w-64 border-r border-slate-800 bg-slate-950 flex flex-col justify-between p-5 select-none shrink-0">
         <div className="space-y-6">
-          <div className="flex items-center gap-3 px-2 py-1">
-            <div className="w-9 h-9 rounded-xl bg-amber-200 text-slate-950 font-bold flex items-center justify-center text-base shadow-sm">
+          {/* Executive Dock Button with Author Credit */}
+          <div
+            onClick={() => setIsCommandDeckOpen(true)}
+            className="flex items-center gap-3 px-2.5 py-2 rounded-xl cursor-pointer hover:bg-slate-900 border border-transparent hover:border-slate-800 transition-all group"
+            title="Click to open Executive Command Deck"
+          >
+            <div className="w-9 h-9 rounded-xl bg-amber-200 text-slate-950 font-bold flex items-center justify-center text-base shadow-sm group-hover:scale-105 transition-transform">
               D
             </div>
             <div>
-              <h1 className="text-sm font-semibold tracking-wide uppercase text-slate-100">Dailygen</h1>
-              <p className="text-[11px] tracking-wider text-slate-400 uppercase font-medium">Executive Dock</p>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-sm font-semibold tracking-wide uppercase text-slate-100">Dailygen</h1>
+                <span className="text-[9px] bg-amber-400/20 text-amber-300 font-bold px-1.5 py-0.2 rounded">DOCK</span>
+              </div>
+              <p className="text-[10px] tracking-wider text-amber-200/90 font-medium">Created by Rishanth Velvijayan</p>
             </div>
           </div>
 
@@ -209,9 +236,9 @@ export default function DashboardPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide tick-nav-btn ${
                   activeTab === tab.id
-                    ? "bg-slate-800/80 text-white shadow-sm ring-1 ring-slate-700/50"
+                    ? "bg-slate-800/80 text-white shadow-sm ring-1 ring-slate-700/60"
                     : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60"
                 }`}
               >
@@ -222,13 +249,16 @@ export default function DashboardPage() {
           </nav>
         </div>
 
-        <div className="pt-4 border-t border-slate-900 flex items-center gap-2.5 px-2">
-          <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300">
-            RS
-          </div>
-          <div className="truncate">
-            <p className="text-xs font-medium text-slate-200 truncate">rshznth@gmail.com</p>
-            <p className="text-[10px] text-emerald-400 font-medium">● Cloud Linked</p>
+        {/* PROFILE & FOOTER */}
+        <div className="pt-4 border-t border-slate-900 flex flex-col gap-2 px-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300">
+              RV
+            </div>
+            <div className="truncate">
+              <p className="text-xs font-medium text-slate-200 truncate">Rishanth Velvijayan</p>
+              <p className="text-[10px] text-emerald-400 font-medium">● Lead Architect</p>
+            </div>
           </div>
         </div>
       </aside>
@@ -244,6 +274,12 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsCommandDeckOpen(true)}
+              className="text-xs font-bold text-amber-200/90 hover:text-amber-200 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/20 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+            >
+              <span>⌘</span> Command Deck
+            </button>
             <div className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-900 border border-slate-800 text-slate-200 shadow-sm">
               {completionRate}%
             </div>
@@ -257,18 +293,63 @@ export default function DashboardPage() {
         <div className="p-8 max-w-5xl w-full mx-auto space-y-8">
           {/* TAB 1: OVERVIEW DECK */}
           {activeTab === "overview" && (
-            <div className="space-y-8 task-enter">
+            <div className="space-y-8 tick-anim-fade">
+              {/* EDITABLE STRATEGIC FOCUS */}
               <div className="space-y-2">
                 <span className="text-[11px] font-bold tracking-widest uppercase text-amber-300 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
                   Today's Strategic Focus
                 </span>
-                <h2 className="text-3xl font-extrabold tracking-tight text-white">Scale Dailygen to MVP Release</h2>
-                <p className="text-xs text-slate-400">Click to redefine today's single most critical priority.</p>
+
+                {isEditingFocus ? (
+                  <form onSubmit={handleSaveStrategicFocus} className="flex gap-2 max-w-xl pt-1">
+                    <input
+                      type="text"
+                      autoFocus
+                      value={focusInput}
+                      onChange={(e) => setFocusInput(e.target.value)}
+                      placeholder="Redefine your single critical priority..."
+                      className="flex-1 bg-slate-900 border border-amber-400/60 rounded-xl px-4 py-2 text-sm text-white focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      className="bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs hover:bg-amber-300 transition-colors"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingFocus(false)}
+                      className="bg-slate-800 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs hover:bg-slate-700 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </form>
+                ) : (
+                  <div
+                    onClick={() => {
+                      setFocusInput(strategicFocus);
+                      setIsEditingFocus(true);
+                    }}
+                    className="cursor-pointer group inline-block"
+                  >
+                    <h2 className="text-3xl font-extrabold tracking-tight text-white group-hover:text-amber-200 transition-colors">
+                      {strategicFocus}
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                      <span>Click to redefine today's single most critical priority.</span>
+                      <span className="text-[10px] text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity">✎ Edit</span>
+                    </p>
+                  </div>
+                )}
               </div>
 
+              {/* THREE METRIC SUMMARY CARDS */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 tick-card space-y-3">
+                <div 
+                  onClick={() => setActiveTab("matrix")}
+                  className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 tick-card space-y-3 cursor-pointer"
+                >
                   <div className="flex justify-between items-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     <span>Active Tasks</span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300">
@@ -279,7 +360,10 @@ export default function DashboardPage() {
                   <p className="text-[11px] text-slate-400">Overall task completion velocity</p>
                 </div>
 
-                <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 tick-card space-y-3">
+                <div 
+                  onClick={() => setActiveTab("habits")}
+                  className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 tick-card space-y-3 cursor-pointer"
+                >
                   <div className="flex justify-between items-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     <span>Habit Cadence</span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300">0 Done</span>
@@ -288,7 +372,10 @@ export default function DashboardPage() {
                   <p className="text-[11px] text-slate-400">Daily discipline & routines</p>
                 </div>
 
-                <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 tick-card space-y-3">
+                <div 
+                  onClick={() => setActiveTab("countdown")}
+                  className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 tick-card space-y-3 cursor-pointer"
+                >
                   <div className="flex justify-between items-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     <span>Next Countdown</span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300">
@@ -299,7 +386,7 @@ export default function DashboardPage() {
                     {countdowns[0] ? `${getDaysLeft(countdowns[0].targetDate).days}d` : "None"}
                   </div>
                   <p className="text-[11px] text-slate-400 truncate">
-                    {countdowns[0] ? countdowns[0].title : "Add an event in Countdown"}
+                    {countdowns[0] ? countdowns[0].title : "Add event in Countdown tab"}
                   </p>
                 </div>
               </div>
@@ -310,7 +397,7 @@ export default function DashboardPage() {
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Tactical Focus Matrix</h3>
                   <button
                     onClick={() => setActiveTab("matrix")}
-                    className="text-xs font-bold text-white bg-sky-600 hover:bg-sky-500 px-3.5 py-1.5 rounded-lg transition-all"
+                    className="text-xs font-bold text-white bg-sky-600 hover:bg-sky-500 px-3.5 py-1.5 rounded-lg transition-all hover:scale-105 active:scale-95"
                   >
                     Open Task Matrix →
                   </button>
@@ -321,13 +408,13 @@ export default function DashboardPage() {
                     <div
                       key={task.id}
                       onClick={() => toggleTask(task.id)}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 cursor-pointer tick-card group"
+                      className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 cursor-pointer tick-card"
                     >
                       <input
                         type="checkbox"
                         checked={task.completed}
                         onChange={() => {}}
-                        className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-400 focus:ring-0 tick-check cursor-pointer"
+                        className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-400 focus:ring-0 tick-checkbox cursor-pointer"
                       />
                       <span
                         className={`text-sm font-medium transition-all ${
@@ -345,25 +432,23 @@ export default function DashboardPage() {
 
           {/* TAB 2, 3: TASK MATRIX / PLANNER / HABITS */}
           {(activeTab === "matrix" || activeTab === "planner" || activeTab === "habits") && (
-            <div className="space-y-6 task-enter">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-white">Execution Board</h2>
-                  <p className="text-xs text-slate-400">Capture, organize, and execute priorities instantly.</p>
-                </div>
+            <div className="space-y-6 tick-anim-fade">
+              <div>
+                <h2 className="text-xl font-bold text-white">Execution Board</h2>
+                <p className="text-xs text-slate-400">Capture, organize, and execute priorities instantly.</p>
               </div>
 
               <form onSubmit={addTask} className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Add a new task (press enter)..."
+                  placeholder="Add a new task (press Enter)..."
                   value={newTaskInput}
                   onChange={(e) => setNewTaskInput(e.target.value)}
                   className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-400/50 transition-colors"
                 />
                 <button
                   type="submit"
-                  className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-sm transition-all"
+                  className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-sm transition-all hover:scale-105 active:scale-95 shadow-sm"
                 >
                   Add Task
                 </button>
@@ -381,7 +466,7 @@ export default function DashboardPage() {
                         type="checkbox"
                         checked={task.completed}
                         onChange={() => {}}
-                        className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-400 tick-check cursor-pointer"
+                        className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-400 tick-checkbox cursor-pointer"
                       />
                       <span className={`text-sm ${task.completed ? "line-through text-slate-500" : "text-slate-200"}`}>
                         {task.title}
@@ -392,7 +477,7 @@ export default function DashboardPage() {
                         e.stopPropagation();
                         setTasks(tasks.filter((t) => t.id !== task.id));
                       }}
-                      className="text-xs text-slate-500 hover:text-rose-400 px-2 py-1 rounded"
+                      className="text-xs text-slate-500 hover:text-rose-400 px-2 py-1 rounded transition-colors"
                     >
                       Delete
                     </button>
@@ -404,7 +489,7 @@ export default function DashboardPage() {
 
           {/* TAB 4: COUNTDOWN */}
           {activeTab === "countdown" && (
-            <div className="space-y-6 task-enter">
+            <div className="space-y-6 tick-anim-fade">
               <div>
                 <h2 className="text-xl font-bold text-white">Event Countdowns</h2>
                 <p className="text-xs text-slate-400">Keep critical deadlines, birthdays, and exams front of mind.</p>
@@ -426,7 +511,7 @@ export default function DashboardPage() {
                 />
                 <button
                   type="submit"
-                  className="bg-sky-500 hover:bg-sky-400 text-white font-bold py-2 rounded-xl text-xs transition-all shadow-sm"
+                  className="bg-sky-500 hover:bg-sky-400 text-white font-bold py-2 rounded-xl text-xs transition-all hover:scale-105 active:scale-95 shadow-sm"
                 >
                   Create Countdown
                 </button>
@@ -456,7 +541,7 @@ export default function DashboardPage() {
                         </div>
                         <button
                           onClick={() => removeCountdown(cd.id)}
-                          className="text-slate-600 hover:text-rose-400 text-sm p-1"
+                          className="text-slate-600 hover:text-rose-400 text-sm p-1 transition-colors"
                         >
                           ✕
                         </button>
@@ -470,7 +555,7 @@ export default function DashboardPage() {
 
           {/* TAB 5: DAY DEBRIEF */}
           {activeTab === "debrief" && (
-            <div className="space-y-6 task-enter">
+            <div className="space-y-6 tick-anim-fade">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-white">Day Debrief & Journal</h2>
@@ -486,7 +571,7 @@ export default function DashboardPage() {
                   />
                   <button
                     onClick={handleSaveDebrief}
-                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-1.5 rounded-xl text-xs transition-all shadow-sm"
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-1.5 rounded-xl text-xs transition-all hover:scale-105 active:scale-95 shadow-sm"
                   >
                     Save Entry
                   </button>
@@ -494,7 +579,7 @@ export default function DashboardPage() {
               </div>
 
               {saveBanner && (
-                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2 tick-anim-fade">
                   <span>✓</span> Entry for {selectedDebriefDate} saved successfully!
                 </div>
               )}
@@ -510,7 +595,7 @@ export default function DashboardPage() {
                         key={rate}
                         type="button"
                         onClick={() => setCurrentRating(rate)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 active:scale-95 ${
                           currentRating === rate
                             ? "bg-amber-400 text-slate-950 font-bold"
                             : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
@@ -595,6 +680,61 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+
+      {/* EXECUTIVE COMMAND DECK OVERLAY MODAL */}
+      {isCommandDeckOpen && (
+        <div
+          onClick={() => setIsCommandDeckOpen(false)}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 tick-anim-fade"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden tick-modal-pop text-slate-100"
+          >
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
+              <div className="flex items-center gap-2">
+                <span className="text-amber-300 font-bold">⌘</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-300">Executive Command Deck</span>
+              </div>
+              <button
+                onClick={() => setIsCommandDeckOpen(false)}
+                className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded"
+              >
+                ESC ✕
+              </button>
+            </div>
+
+            <div className="p-4 space-y-2">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-2">Quick Navigation</div>
+              {[
+                { id: "overview", label: "Open Strategic Overview Deck", desc: "View task velocity & focus" },
+                { id: "matrix", label: "Jump to Execution Board", desc: "Check off active items" },
+                { id: "countdown", label: "Open Event Countdowns", desc: "Track birthdays and exam dates" },
+                { id: "debrief", label: "Open Day Debrief & Photos", desc: "Log journal notes and snapshots" },
+              ].map((cmd) => (
+                <div
+                  key={cmd.id}
+                  onClick={() => {
+                    setActiveTab(cmd.id);
+                    setIsCommandDeckOpen(false);
+                  }}
+                  className="p-3 rounded-xl hover:bg-slate-800/80 cursor-pointer flex justify-between items-center transition-all group"
+                >
+                  <div>
+                    <p className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition-colors">{cmd.label}</p>
+                    <p className="text-[11px] text-slate-400">{cmd.desc}</p>
+                  </div>
+                  <span className="text-xs text-slate-500 group-hover:text-white transition-colors">↵</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3 bg-slate-950/80 border-t border-slate-800 text-center">
+              <p className="text-[11px] text-slate-500">Press anywhere outside or click ESC to dismiss</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

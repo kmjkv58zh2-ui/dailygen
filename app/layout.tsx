@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Dailygen — Personal Command Centre",
-  description: "The personal command centre for disciplined achievers.",
+  description: "The personal command centre for disciplined achievers. Created by Rishanth Velvijayan.",
   authors: [{ name: "Rishanth Velvijayan" }],
   creator: "Rishanth Velvijayan",
 };
@@ -171,7 +171,7 @@ export default function RootLayout({
                     color: #831843 !important;
                   }
 
-                  /* TOP RIGHT PILLS / BADGES (50%, 0/0) */
+                  /* TOP RIGHT PILLS */
                   header [class*="rounded-"], header [class*="px-"], header div[class*="bg-"],
                   [class*="rounded-full"][class*="bg-slate-"], [class*="rounded-full"][class*="bg-neutral-"], [class*="rounded-full"][class*="bg-black"] {
                     background-color: #fce7f3 !important;
@@ -239,7 +239,7 @@ export default function RootLayout({
                     color: #0c4a6e !important;
                   }
 
-                  /* TOP RIGHT PILLS / BADGES (50%, 0/0) */
+                  /* TOP RIGHT PILLS */
                   header [class*="rounded-"], header [class*="px-"], header div[class*="bg-"],
                   [class*="rounded-full"][class*="bg-slate-"], [class*="rounded-full"][class*="bg-neutral-"], [class*="rounded-full"][class*="bg-black"] {
                     background-color: #e0f2fe !important;
@@ -294,7 +294,7 @@ export default function RootLayout({
                     border: 1px solid #3f3f46 !important;
                   }
 
-                  /* TOP RIGHT PILLS / BADGES (50%, 0/0) */
+                  /* TOP RIGHT PILLS */
                   header [class*="rounded-"], header [class*="px-"], header div[class*="bg-"],
                   [class*="rounded-full"][class*="bg-slate-"], [class*="rounded-full"][class*="bg-neutral-"], [class*="rounded-full"][class*="bg-black"] {
                     background-color: #18181b !important;
@@ -361,7 +361,7 @@ export default function RootLayout({
                     color: #0f172a !important;
                   }
 
-                  /* TOP RIGHT PILLS / BADGES (50%, 0/0) */
+                  /* TOP RIGHT PILLS */
                   header [class*="rounded-"], header [class*="px-"], header div[class*="bg-"],
                   [class*="rounded-full"][class*="bg-slate-"], [class*="rounded-full"][class*="bg-neutral-"], [class*="rounded-full"][class*="bg-black"] {
                     background-color: #f1f5f9 !important;

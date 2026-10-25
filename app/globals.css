@@ -1,48 +1,80 @@
 @import "tailwindcss";
 
-:root {
-  --transition-smooth: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+@layer utilities {
+  /* TickTick spring bouncy hover */
+  .tick-card {
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                box-shadow 0.22s ease, 
+                border-color 0.22s ease;
+  }
+  .tick-card:hover {
+    transform: translateY(-3px) scale(1.01);
+    box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5), 0 0 15px rgba(246, 216, 155, 0.08);
+  }
+
+  /* TickTick checkbox spring bounce */
+  .tick-checkbox {
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.18s ease;
+  }
+  .tick-checkbox:active {
+    transform: scale(0.75);
+  }
+
+  /* Nav item pill tactile feedback */
+  .tick-nav-btn {
+    transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .tick-nav-btn:hover {
+    transform: translateX(4px);
+  }
+  .tick-nav-btn:active {
+    transform: scale(0.97);
+  }
+
+  /* Modal & View entry smooth slide */
+  .tick-anim-fade {
+    animation: tickFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .tick-modal-pop {
+    animation: tickPopModal 0.24s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
 }
 
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  padding: 0;
-  font-family: inherit;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-}
-
-.tick-card {
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.tick-card:hover {
-  transform: translateY(-2px);
-}
-
-.tick-check {
-  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.tick-check:active {
-  transform: scale(0.85);
-}
-
-.task-enter {
-  animation: tickFadeSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes tickFadeSlide {
+@keyframes tickFadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes tickPopModal {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Custom minimal scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
 }
