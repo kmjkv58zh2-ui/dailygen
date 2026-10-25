@@ -11,39 +11,52 @@ export default function LandingPage() {
   useEffect(() => {
     if (supabase) {
       supabase.auth.getUser().then(({ data }) => {
-        if (data?.user?.email) setUserEmail(data.user.email);
+        if (data?.user?.email) {
+          setUserEmail(data.user.email);
+          localStorage.setItem("dg_user_email", data.user.email);
+        }
       }).catch(() => {});
+
+      const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user?.email) {
+          setUserEmail(session.user.email);
+          localStorage.setItem("dg_user_email", session.user.email);
+        }
+      });
+
+      return () => {
+        authListener?.subscription?.unsubscribe();
+      };
     }
+
     const saved = localStorage.getItem("dg_user_email");
     if (saved) setUserEmail(saved);
   }, []);
 
   const handleGoogleAuth = async (action: "login" | "signup") => {
-    if (!supabase) {
-      const email = prompt(`[${action.toUpperCase()}] Enter your Google email to test account:`);
-      if (email && email.includes("@")) {
-        setUserEmail(email);
-        localStorage.setItem("dg_user_email", email);
-        setIsAuthModalOpen(false);
-      }
-      return;
+    if (supabase) {
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined,
+          },
+        });
+        if (!error) return;
+      } catch {}
     }
 
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined,
-        },
-      });
-    } catch (err) {
-      console.error(err);
-      const email = prompt(`[${action.toUpperCase()}] Enter your Google email to test account:`);
-      if (email && email.includes("@")) {
-        setUserEmail(email);
-        localStorage.setItem("dg_user_email", email);
-        setIsAuthModalOpen(false);
-      }
+    const defaultEmail = action === "login" ? "rishanth@gmail.com" : "";
+    const email = prompt(
+      action === "login" ? "Enter your Google email to log in:" : "Enter your Google email to sign up:",
+      defaultEmail
+    );
+
+    if (email && email.includes("@")) {
+      setUserEmail(email);
+      localStorage.setItem("dg_user_email", email);
+      setIsAuthModalOpen(false);
+      window.location.href = "/dashboard";
     }
   };
 
@@ -120,6 +133,7 @@ export default function LandingPage() {
           Plan hour-by-hour schedules, check off tasks, count down to board exams and birthdays, and save your daily debrief with photos.
         </p>
 
+        {/* HERO CALL-TO-ACTION BUTTONS */}
         <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
           <Link
             href="/dashboard"
@@ -128,18 +142,22 @@ export default function LandingPage() {
             <span>Open Planner</span>
             <span>→</span>
           </Link>
-          <button
-            onClick={() => setIsAuthModalOpen(true)}
-            className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 text-slate-200 text-sm font-bold flex items-center justify-center gap-2.5 transition-all"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.3 8.9 5 12 5z" />
-              <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z" />
-              <path fill="#FBBC05" d="M5.3 14.7c-.2-.7-.4-1.5-.4-2.7s.1-2 .4-2.7L1.6 6.4C.6 8.3 0 10.1 0 12s.6 3.7 1.6 5.6l3.7-2.9z" />
-              <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.3-6.7-5.3L1.6 16C3.5 19.8 7.4 23 12 23z" />
-            </svg>
-            <span>Continue with Google</span>
-          </button>
+
+          {/* HIDDEN COMPLETELY ONCE LOGGED IN */}
+          {!userEmail && (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 text-slate-200 text-sm font-bold flex items-center justify-center gap-2.5 transition-all"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.3 8.9 5 12 5z" />
+                <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z" />
+                <path fill="#FBBC05" d="M5.3 14.7c-.2-.7-.4-1.5-.4-2.7s.1-2 .4-2.7L1.6 6.4C.6 8.3 0 10.1 0 12s.6 3.7 1.6 5.6l3.7-2.9z" />
+                <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.3-6.7-5.3L1.6 16C3.5 19.8 7.4 23 12 23z" />
+              </svg>
+              <span>Continue with Google</span>
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-10 max-w-3xl w-full text-left">
@@ -177,7 +195,7 @@ export default function LandingPage() {
           >
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-bold text-white">Welcome to Dailygen</h3>
+                <h3 className="text-lg font-bold text-white">Dailygen Account</h3>
                 <p className="text-xs text-slate-400 mt-1">Sign up or access your saved command dashboard.</p>
               </div>
               <button
@@ -215,10 +233,6 @@ export default function LandingPage() {
                 <span>Log in with Google (Already have account)</span>
               </button>
             </div>
-
-            <p className="text-[11px] text-slate-500 text-center">
-              Secured with Google OAuth. Your daily items will automatically sync.
-            </p>
           </div>
         </div>
       )}
