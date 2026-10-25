@@ -21,6 +21,7 @@ interface DebriefEntry {
 }
 
 export default function DashboardPage() {
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("overview");
 
   // Tasks state
@@ -38,32 +39,39 @@ export default function DashboardPage() {
   const [newCountTitle, setNewCountTitle] = useState("");
   const [newCountDate, setNewCountDate] = useState("");
 
-  // Day Debrief state
-  const todayKey = new Date().toISOString().split("T")[0];
-  const [selectedDebriefDate, setSelectedDebriefDate] = useState<string>(todayKey);
+  // Day Debrief state - initialized without top-level new Date() to pass Next.js build
+  const [selectedDebriefDate, setSelectedDebriefDate] = useState<string>("");
   const [debriefEntries, setDebriefEntries] = useState<Record<string, DebriefEntry>>({});
   const [currentNotes, setCurrentNotes] = useState("");
   const [currentRating, setCurrentRating] = useState("Great");
   const [currentImages, setCurrentImages] = useState<string[]>([]);
   const [saveBanner, setSaveBanner] = useState(false);
 
-  // Load from LocalStorage
+  // Load from LocalStorage safely on client mount
   useEffect(() => {
+    setMounted(true);
+    const today = new Date().toISOString().split("T")[0];
+    setSelectedDebriefDate(today);
+
     const savedTasks = localStorage.getItem("dg_tasks");
-    if (savedTasks) try { setTasks(JSON.parse(savedTasks)); } catch {}
+    if (savedTasks) {
+      try { setTasks(JSON.parse(savedTasks)); } catch {}
+    }
 
     const savedCounts = localStorage.getItem("dg_countdowns");
-    if (savedCounts) try { setCountdowns(JSON.parse(savedCounts)); } catch {}
+    if (savedCounts) {
+      try { setCountdowns(JSON.parse(savedCounts)); } catch {}
+    }
 
     const savedDebriefs = localStorage.getItem("dg_debriefs");
     if (savedDebriefs) {
       try {
         const parsed = JSON.parse(savedDebriefs);
         setDebriefEntries(parsed);
-        if (parsed[todayKey]) {
-          setCurrentNotes(parsed[todayKey].notes || "");
-          setCurrentRating(parsed[todayKey].rating || "Great");
-          setCurrentImages(parsed[todayKey].images || []);
+        if (parsed[today]) {
+          setCurrentNotes(parsed[today].notes || "");
+          setCurrentRating(parsed[today].rating || "Great");
+          setCurrentImages(parsed[today].images || []);
         }
       } catch {}
     }
@@ -86,6 +94,7 @@ export default function DashboardPage() {
 
   // Save debrief
   const handleSaveDebrief = () => {
+    if (!selectedDebriefDate) return;
     const updated = {
       ...debriefEntries,
       [selectedDebriefDate]: {
@@ -162,6 +171,7 @@ export default function DashboardPage() {
   };
 
   const getDaysLeft = (targetStr: string) => {
+    if (!mounted) return { days: 0, hours: 0, expired: false };
     const diff = new Date(targetStr).getTime() - new Date().getTime();
     if (diff <= 0) return { days: 0, hours: 0, expired: true };
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -333,7 +343,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB 2 & 3: TASK MATRIX / PLANNER */}
+          {/* TAB 2, 3: TASK MATRIX / PLANNER / HABITS */}
           {(activeTab === "matrix" || activeTab === "planner" || activeTab === "habits") && (
             <div className="space-y-6 task-enter">
               <div className="flex items-center justify-between">
@@ -392,7 +402,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB 4: COUNTDOWN (REPLACING GOALS & MILESTONES) */}
+          {/* TAB 4: COUNTDOWN */}
           {activeTab === "countdown" && (
             <div className="space-y-6 task-enter">
               <div>
@@ -458,7 +468,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB 5: DAY DEBRIEF (PERSISTENT WITH DATE & 5 IMAGES) */}
+          {/* TAB 5: DAY DEBRIEF */}
           {activeTab === "debrief" && (
             <div className="space-y-6 task-enter">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -525,7 +535,7 @@ export default function DashboardPage() {
                   />
                 </div>
 
-                {/* IMAGE UPLOAD SECTION (UP TO 5 PHOTOS) */}
+                {/* IMAGE UPLOAD SECTION */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
