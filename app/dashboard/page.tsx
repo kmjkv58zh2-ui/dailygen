@@ -32,6 +32,7 @@ interface CountdownItem {
 }
 
 interface DebriefEntry {
+  date: string;
   notes: string;
   rating: string;
   images: string[];
@@ -48,7 +49,7 @@ export default function DashboardPage() {
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [goalInput, setGoalInput] = useState("");
 
-  // TAB 1: DAILY PLANNER (Schedule)
+  // TAB 1: DAILY PLANNER
   const [schedule, setSchedule] = useState<ScheduleBlock[]>([
     { id: "s1", time: "07:00 AM - 08:30 AM", activity: "Morning Routine & Gym", done: true },
     { id: "s2", time: "09:00 AM - 12:30 PM", activity: "Deep Study & Project Work", done: false },
@@ -83,13 +84,20 @@ export default function DashboardPage() {
   const [newCountTitle, setNewCountTitle] = useState("");
   const [newCountDate, setNewCountDate] = useState("");
 
-  // TAB 5: DAY DEBRIEF
+  // TAB 5: DAY DEBRIEF ARCHIVE & JOURNAL
   const [selectedDebriefDate, setSelectedDebriefDate] = useState<string>("");
   const [debriefEntries, setDebriefEntries] = useState<Record<string, DebriefEntry>>({});
   const [currentNotes, setCurrentNotes] = useState("");
   const [currentRating, setCurrentRating] = useState("Great");
   const [currentImages, setCurrentImages] = useState<string[]>([]);
   const [saveBanner, setSaveBanner] = useState(false);
+
+  // Pagination for Past Day Debrief Cards (6 entries per page)
+  const [debriefPage, setDebriefPage] = useState(1);
+  const itemsPerPage = 6;
+
+  // Selected Day Modal View
+  const [inspectEntry, setInspectEntry] = useState<DebriefEntry | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -122,7 +130,7 @@ export default function DashboardPage() {
 
       const d = localStorage.getItem("dg_debriefs");
       if (d) {
-        const parsed = JSON.parse(d);
+        const parsed: Record<string, DebriefEntry> = JSON.parse(d);
         setDebriefEntries(parsed);
         if (parsed[today]) {
           setCurrentNotes(parsed[today].notes || "");
@@ -134,30 +142,28 @@ export default function DashboardPage() {
   }, []);
 
   const handleGoogleAuth = async (action: "login" | "signup") => {
-    if (!supabase) {
-      const email = prompt(`[${action.toUpperCase()}] Enter your Google email to connect:`);
-      if (email && email.includes("@")) {
-        setCurrentUserEmail(email);
-        localStorage.setItem("dg_user_email", email);
-        setIsAuthModalOpen(false);
-      }
-      return;
+    if (supabase) {
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: typeof window !== "undefined" ? window.location.href : undefined,
+          },
+        });
+        if (!error) return;
+      } catch {}
     }
 
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: typeof window !== "undefined" ? window.location.href : undefined,
-        },
-      });
-    } catch {
-      const email = prompt(`[${action.toUpperCase()}] Enter your Google email:`);
-      if (email && email.includes("@")) {
-        setCurrentUserEmail(email);
-        localStorage.setItem("dg_user_email", email);
-        setIsAuthModalOpen(false);
-      }
+    const defaultEmail = action === "login" ? "rishanth@gmail.com" : "";
+    const email = prompt(
+      action === "login" ? "Enter your Google email to log in:" : "Enter your Google email to sign up:",
+      defaultEmail
+    );
+
+    if (email && email.includes("@")) {
+      setCurrentUserEmail(email);
+      localStorage.setItem("dg_user_email", email);
+      setIsAuthModalOpen(false);
     }
   };
 
@@ -285,7 +291,6 @@ export default function DashboardPage() {
     localStorage.setItem("dg_countdowns", JSON.stringify(updated));
   };
 
-  // FULL-FORM COUNTDOWN FORMATTING FUNCTION
   const getFullCountdownText = (targetStr: string) => {
     if (!mounted) return "Calculating remaining time...";
     const diff = new Date(targetStr).getTime() - new Date().getTime();
@@ -300,7 +305,7 @@ export default function DashboardPage() {
     return `${dayText} and ${hourText} remaining`;
   };
 
-  // DAY DEBRIEF
+  // DAY DEBRIEF ACTIONS
   const handleDateChange = (dateStr: string) => {
     setSelectedDebriefDate(dateStr);
     const entry = debriefEntries[dateStr];
@@ -317,9 +322,10 @@ export default function DashboardPage() {
 
   const handleSaveDebrief = () => {
     if (!selectedDebriefDate) return;
-    const updated = {
+    const updated: Record<string, DebriefEntry> = {
       ...debriefEntries,
       [selectedDebriefDate]: {
+        date: selectedDebriefDate,
         notes: currentNotes,
         rating: currentRating,
         images: currentImages,
@@ -358,6 +364,17 @@ export default function DashboardPage() {
     setCurrentImages((prev) => prev.filter((_, idx) => idx !== index));
   };
 
+  // Convert debrief entries map to sorted array (newest dates first)
+  const debriefList = Object.values(debriefEntries).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  const totalDebriefPages = Math.max(1, Math.ceil(debriefList.length / itemsPerPage));
+  const currentPagedDebriefs = debriefList.slice(
+    (debriefPage - 1) * itemsPerPage,
+    debriefPage * itemsPerPage
+  );
+
   const completedTasks = tasks.filter((t) => t.completed).length;
   const taskRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
   const doneHabits = habits.filter((h) => h.completed).length;
@@ -367,7 +384,6 @@ export default function DashboardPage() {
       {/* SIDEBAR */}
       <aside className="w-64 border-r border-slate-800 bg-[#060913] flex flex-col justify-between p-5 select-none shrink-0">
         <div className="space-y-6">
-          {/* Logo clean without any text below */}
           <Link href="/" className="flex items-center gap-3 px-2 py-1 group">
             <div className="w-9 h-9 rounded-xl bg-amber-200 text-slate-950 font-black flex items-center justify-center text-base shadow-sm group-hover:scale-105 transition-transform">
               D
@@ -377,7 +393,6 @@ export default function DashboardPage() {
             </div>
           </Link>
 
-          {/* Navigation */}
           <nav className="space-y-1">
             {[
               { id: "overview", label: "Overview", icon: "❖" },
@@ -403,7 +418,6 @@ export default function DashboardPage() {
           </nav>
         </div>
 
-        {/* BOTTOM SECTION WITH ONLY DESIGNED AND BUILT CREDIT */}
         <div className="pt-4 border-t border-slate-800/80 flex flex-col gap-3 px-1 text-center">
           <p className="text-[11px] font-medium text-slate-400 leading-relaxed">
             Designed and Built by <br />
@@ -414,7 +428,7 @@ export default function DashboardPage() {
 
       {/* MAIN VIEWPORT */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* HEADER BAR WITH TOP-RIGHT LOGIN / SIGNUP */}
+        {/* HEADER BAR */}
         <header className="h-16 border-b border-slate-800 px-8 flex items-center justify-between bg-[#060913]/60 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-slate-400 uppercase">
             <span>Dailygen</span>
@@ -427,7 +441,6 @@ export default function DashboardPage() {
               Tasks: {completedTasks}/{tasks.length} ({taskRate}%)
             </div>
 
-            {/* TOP-RIGHT LOGIN / SIGNUP BUTTON */}
             {currentUserEmail ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl font-medium">
@@ -812,7 +825,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB 4: COUNTDOWN (WITH FULL-FORM WORDING) */}
+          {/* TAB 4: COUNTDOWN */}
           {activeTab === "countdown" && (
             <div className="space-y-6 tick-anim-fade">
               <div>
@@ -857,7 +870,6 @@ export default function DashboardPage() {
 
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        {/* FULL FORM STRING: e.g. "130 days and 2 hours remaining" */}
                         <div className="text-base sm:text-lg font-black text-amber-300">
                           {getFullCountdownText(cd.targetDate)}
                         </div>
@@ -875,133 +887,338 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB 5: DAY DEBRIEF */}
+          {/* TAB 5: DAY DEBRIEF WITH VISUAL ARCHIVE & MONTH PAGINATION */}
           {activeTab === "debrief" && (
-            <div className="space-y-6 tick-anim-fade">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-bold text-white">Day Debrief & Journal</h2>
-                  <p className="text-xs text-slate-400">Save how your day went and upload up to 5 photos.</p>
+            <div className="space-y-10 tick-anim-fade">
+              {/* SECTION A: LOG / EDIT TODAY'S DEBRIEF */}
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Day Debrief & Journal</h2>
+                    <p className="text-xs text-slate-400">Record reflections, mood, and photos. Every entry gets saved in your archive below.</p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="date"
+                      value={selectedDebriefDate}
+                      onChange={(e) => handleDateChange(e.target.value)}
+                      className="bg-slate-900 border border-slate-800 text-slate-200 px-3.5 py-1.5 rounded-xl text-xs font-semibold focus:outline-none focus:border-amber-400"
+                    />
+                    <button
+                      onClick={handleSaveDebrief}
+                      className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2 rounded-xl text-xs transition-all shadow-md active:scale-95 flex items-center gap-1.5"
+                    >
+                      <span>💾</span> Save Entry
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <input
-                    type="date"
-                    value={selectedDebriefDate}
-                    onChange={(e) => handleDateChange(e.target.value)}
-                    className="bg-slate-900 border border-slate-800 text-slate-200 px-3.5 py-1.5 rounded-xl text-xs font-semibold focus:outline-none focus:border-amber-400"
-                  />
-                  <button
-                    onClick={handleSaveDebrief}
-                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-1.5 rounded-xl text-xs transition-all shadow-sm"
-                  >
-                    Save Entry
-                  </button>
+                {saveBanner && (
+                  <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2 tick-anim-fade">
+                    <span>✓</span> Saved entry for {selectedDebriefDate}! View it in the archive below.
+                  </div>
+                )}
+
+                <div className="space-y-5 p-6 rounded-2xl bg-slate-900/50 border border-slate-800">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                      How was your day?
+                    </label>
+                    <div className="flex gap-2">
+                      {["Outstanding", "Great", "Neutral", "Challenging"].map((rate) => (
+                        <button
+                          key={rate}
+                          type="button"
+                          onClick={() => setCurrentRating(rate)}
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            currentRating === rate
+                              ? "bg-amber-300 text-slate-950 font-bold shadow-sm"
+                              : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                          }`}
+                        >
+                          {rate}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                      What happened today?
+                    </label>
+                    <textarea
+                      rows={5}
+                      value={currentNotes}
+                      onChange={(e) => setCurrentNotes(e.target.value)}
+                      placeholder="Write what all happened today, accomplishments, and lessons..."
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-amber-400/50 resize-y"
+                    />
+                  </div>
+
+                  {/* IMAGE UPLOAD SECTION */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Photos ({currentImages.length}/5)
+                      </label>
+                      {currentImages.length < 5 && (
+                        <label className="cursor-pointer text-xs font-semibold text-sky-400 hover:text-sky-300">
+                          + Add Photos
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    {currentImages.length === 0 ? (
+                      <div className="border border-dashed border-slate-800 rounded-xl p-6 text-center">
+                        <p className="text-xs text-slate-500">No photos attached for {selectedDebriefDate}.</p>
+                        <label className="inline-block mt-2 text-xs font-semibold text-amber-300 hover:text-amber-200 cursor-pointer">
+                          Upload up to 5 photos
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                        {currentImages.map((imgSrc, index) => (
+                          <div key={index} className="relative group rounded-xl overflow-hidden border border-slate-800 aspect-square bg-slate-950">
+                            <img
+                              src={imgSrc}
+                              alt={`Debrief capture ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(index)}
+                              className="absolute top-1.5 right-1.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {saveBanner && (
-                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2 tick-anim-fade">
-                  <span>✓</span> Entry for {selectedDebriefDate} saved!
-                </div>
-              )}
-
-              <div className="space-y-4 p-6 rounded-2xl bg-slate-900/50 border border-slate-800">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                    How was your day?
-                  </label>
-                  <div className="flex gap-2">
-                    {["Outstanding", "Great", "Neutral", "Challenging"].map((rate) => (
-                      <button
-                        key={rate}
-                        type="button"
-                        onClick={() => setCurrentRating(rate)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                          currentRating === rate
-                            ? "bg-amber-300 text-slate-950 font-bold"
-                            : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
-                        }`}
-                      >
-                        {rate}
-                      </button>
-                    ))}
+              {/* SECTION B: VISUAL ARCHIVE OF SAVED DAYS (TIMELINE CARDS & PAGINATION) */}
+              <div className="space-y-5 pt-4 border-t border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <span>🗂️</span> Past Days Archive
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Click any day card to view the full journal entry and pictures.
+                    </p>
                   </div>
+                  <span className="text-xs text-slate-400 font-semibold bg-slate-900 border border-slate-800 px-3 py-1 rounded-xl">
+                    Total: {debriefList.length} days recorded
+                  </span>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                    What happened today?
-                  </label>
-                  <textarea
-                    rows={6}
-                    value={currentNotes}
-                    onChange={(e) => setCurrentNotes(e.target.value)}
-                    placeholder="Write what all happened today, accomplishments, and lessons..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-amber-400/50 resize-y"
-                  />
-                </div>
-
-                {/* IMAGE UPLOAD SECTION */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                      Photos ({currentImages.length}/5)
-                    </label>
-                    {currentImages.length < 5 && (
-                      <label className="cursor-pointer text-xs font-semibold text-sky-400 hover:text-sky-300">
-                        + Add Photos
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    )}
+                {debriefList.length === 0 ? (
+                  <div className="p-8 border border-slate-800/60 rounded-2xl text-center bg-slate-900/30">
+                    <p className="text-xs text-slate-400">No debriefs saved yet. Use the form above and click "Save Entry"!</p>
                   </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {currentPagedDebriefs.map((entry) => {
+                        const dateObj = new Date(entry.date);
+                        const formattedDate = dateObj.toLocaleDateString("en-US", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        });
 
-                  {currentImages.length === 0 ? (
-                    <div className="border border-dashed border-slate-800 rounded-xl p-8 text-center">
-                      <p className="text-xs text-slate-500">No photos attached for {selectedDebriefDate}.</p>
-                      <label className="inline-block mt-2 text-xs font-semibold text-amber-300 hover:text-amber-200 cursor-pointer">
-                        Upload up to 5 photos
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                      {currentImages.map((imgSrc, index) => (
-                        <div key={index} className="relative group rounded-xl overflow-hidden border border-slate-800 aspect-square bg-slate-950">
-                          <img
-                            src={imgSrc}
-                            alt={`Debrief capture ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImage(index)}
-                            className="absolute top-1.5 right-1.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                        return (
+                          <div
+                            key={entry.date}
+                            onClick={() => setInspectEntry(entry)}
+                            className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-amber-400/50 transition-all cursor-pointer tick-card flex flex-col justify-between space-y-3 group"
                           >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
+                            <div className="space-y-2">
+                              {/* Header Date & Mood Badge */}
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-black text-white group-hover:text-amber-200 transition-colors">
+                                  {formattedDate}
+                                </span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                                  {entry.rating}
+                                </span>
+                              </div>
+
+                              {/* Note snippet */}
+                              <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed">
+                                {entry.notes || "No reflection text entered."}
+                              </p>
+                            </div>
+
+                            {/* Images preview row */}
+                            <div className="pt-2 border-t border-slate-800/60">
+                              {entry.images && entry.images.length > 0 ? (
+                                <div className="flex items-center gap-1.5 overflow-hidden">
+                                  {entry.images.slice(0, 3).map((img, idx) => (
+                                    <img
+                                      key={idx}
+                                      src={img}
+                                      alt="Thumbnail"
+                                      className="w-10 h-10 object-cover rounded-lg border border-slate-700/60"
+                                    />
+                                  ))}
+                                  {entry.images.length > 3 && (
+                                    <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300">
+                                      +{entry.images.length - 3}
+                                    </div>
+                                  )}
+                                  <span className="text-[10px] text-slate-400 ml-auto font-medium">
+                                    {entry.images.length} photo{entry.images.length > 1 ? "s" : ""}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-slate-500 italic">No photos attached</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
+
+                    {/* PAGINATION CONTROLS (Page 1, 2, 3...) */}
+                    {totalDebriefPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-4">
+                        <button
+                          disabled={debriefPage === 1}
+                          onClick={() => setDebriefPage((p) => Math.max(1, p - 1))}
+                          className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900 border border-slate-800 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 text-slate-200 transition-colors"
+                        >
+                          ← Previous
+                        </button>
+
+                        {Array.from({ length: totalDebriefPages }).map((_, i) => {
+                          const pNum = i + 1;
+                          return (
+                            <button
+                              key={pNum}
+                              onClick={() => setDebriefPage(pNum)}
+                              className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${
+                                debriefPage === pNum
+                                  ? "bg-amber-300 text-slate-950 font-black shadow-sm"
+                                  : "bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800"
+                              }`}
+                            >
+                              {pNum}
+                            </button>
+                          );
+                        })}
+
+                        <button
+                          disabled={debriefPage === totalDebriefPages}
+                          onClick={() => setDebriefPage((p) => Math.min(totalDebriefPages, p + 1))}
+                          className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900 border border-slate-800 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 text-slate-200 transition-colors"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           )}
         </div>
       </main>
+
+      {/* INSPECT DAY MODAL (CLICKED FROM ARCHIVE) */}
+      {inspectEntry && (
+        <div
+          onClick={() => setInspectEntry(null)}
+          className="fixed inset-0 bg-black/80 backdrop-blur-md z-[99999] flex items-center justify-center p-4 tick-anim-fade"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-3xl p-6 shadow-2xl text-slate-100 space-y-5 tick-modal-pop max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-amber-300 tracking-wider">Day Debrief Record</span>
+                <h3 className="text-xl font-black text-white">
+                  {new Date(inspectEntry.date).toLocaleDateString("en-US", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold px-3 py-1 rounded-lg bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                  {inspectEntry.rating}
+                </span>
+                <button
+                  onClick={() => setInspectEntry(null)}
+                  className="text-slate-400 hover:text-white text-base p-1"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Reflection Content */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Reflections & Notes
+              </label>
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                {inspectEntry.notes || "No notes were recorded for this day."}
+              </div>
+            </div>
+
+            {/* Photos (Full Grid) */}
+            {inspectEntry.images && inspectEntry.images.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Captured Snapshots ({inspectEntry.images.length})
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {inspectEntry.images.map((img, idx) => (
+                    <div key={idx} className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950 aspect-video">
+                      <img
+                        src={img}
+                        alt={`Photo capture ${idx + 1}`}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-2 text-right">
+              <button
+                onClick={() => setInspectEntry(null)}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
+              >
+                Close View
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* GOOGLE AUTH POPUP MODAL */}
       {isAuthModalOpen && (
