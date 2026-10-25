@@ -143,7 +143,6 @@ export default function LandingPage() {
             <span>→</span>
           </Link>
 
-          {/* HIDDEN COMPLETELY ONCE LOGGED IN */}
           {!userEmail && (
             <button
               onClick={() => setIsAuthModalOpen(true)}
@@ -175,12 +174,11 @@ export default function LandingPage() {
         </div>
       </main>
 
-      {/* FOOTER */}
-      <footer className="w-full max-w-6xl mx-auto px-6 py-8 border-t border-slate-900 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-400">
+      {/* FOOTER: NAME IS NOW DIRECTLY NEXT TO ALL RIGHTS RESERVED */}
+      <footer className="w-full max-w-6xl mx-auto px-6 py-8 border-t border-slate-900 flex justify-between items-center text-xs text-slate-400">
         <div>
-          Designed and Built by <span className="text-slate-200 font-bold">Rishanth Velvijayan</span>
+          © 2026 Dailygen. All rights reserved. Designed and Built by <span className="text-slate-200 font-bold">Rishanth Velvijayan</span>
         </div>
-        <div>© 2026 Dailygen. All rights reserved.</div>
       </footer>
 
       {/* GOOGLE AUTH POPUP MODAL */}
@@ -196,7 +194,7 @@ export default function LandingPage() {
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="text-lg font-bold text-white">Dailygen Account</h3>
-                <p className="text-xs text-slate-400 mt-1">Sign up or access your saved command dashboard.</p>
+                <p className="text-xs text-slate-400 mt-1">Connect your Google account to sync your schedule & debriefs.</p>
               </div>
               <button
                 onClick={() => setIsAuthModalOpen(false)}

@@ -104,7 +104,6 @@ export default function DashboardPage() {
     const today = new Date().toISOString().split("T")[0];
     setSelectedDebriefDate(today);
 
-    // Supabase auth subscription (catches Google OAuth redirects automatically)
     if (supabase) {
       supabase.auth.getUser().then(({ data }) => {
         if (data?.user?.email) {
@@ -353,7 +352,6 @@ export default function DashboardPage() {
     setTimeout(() => setSaveBanner(false), 2200);
   };
 
-  // DELETE A DEBRIEF ENTRY (FROM GRID OR INSPECT MODAL)
   const handleDeleteDebrief = (dateKey: string) => {
     if (!confirm("Are you sure you want to delete this day's entry?")) return;
     const copy = { ...debriefEntries };
@@ -397,7 +395,6 @@ export default function DashboardPage() {
     setCurrentImages((prev) => prev.filter((_, idx) => idx !== index));
   };
 
-  // Sort entries safely so bad date formats don't break
   const debriefList = Object.entries(debriefEntries)
     .map(([key, value]) => ({
       ...value,
@@ -432,7 +429,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen flex bg-[#060913] text-slate-100 antialiased selection:bg-amber-400 selection:text-slate-900 font-sans">
-      {/* SIDEBAR */}
+      {/* SIDEBAR: NAME REMOVED COMPLETELY FROM THE BOTTOM */}
       <aside className="w-64 border-r border-slate-800 bg-[#060913] flex flex-col justify-between p-5 select-none shrink-0">
         <div className="space-y-6">
           <Link href="/" className="flex items-center gap-3 px-2 py-1 group">
@@ -468,14 +465,6 @@ export default function DashboardPage() {
             ))}
           </nav>
         </div>
-
-        {/* BOTTOM SECTION WITH ONLY DESIGNED AND BUILT CREDIT */}
-        <div className="pt-4 border-t border-slate-800/80 flex flex-col gap-3 px-1 text-center">
-          <p className="text-[11px] font-medium text-slate-400 leading-relaxed">
-            Designed and Built by <br />
-            <span className="text-amber-200 font-bold tracking-wide">Rishanth Velvijayan</span>
-          </p>
-        </div>
       </aside>
 
       {/* MAIN VIEWPORT */}
@@ -493,7 +482,6 @@ export default function DashboardPage() {
               Tasks: {completedTasks}/{tasks.length} ({taskRate}%)
             </div>
 
-            {/* ONLY SHOW USER BADGE AND LOGOUT IF SIGNED IN, OTHERWISE SHOW LOGIN */}
             {currentUserEmail ? (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
@@ -1070,7 +1058,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* SECTION B: VISUAL ARCHIVE OF SAVED DAYS (WITH DELETE BUTTON PER CARD) */}
+              {/* SECTION B: VISUAL ARCHIVE OF SAVED DAYS */}
               <div className="space-y-5 pt-4 border-t border-slate-800/80">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1100,7 +1088,6 @@ export default function DashboardPage() {
                           className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-amber-400/50 transition-all cursor-pointer tick-card flex flex-col justify-between space-y-3 group relative"
                         >
                           <div className="space-y-2">
-                            {/* Header Date & Mood Badge & DELETE TRASH BUTTON */}
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-xs font-black text-white group-hover:text-amber-200 transition-colors truncate">
                                 {formatCardDate(entry.date)}
@@ -1123,13 +1110,11 @@ export default function DashboardPage() {
                               </div>
                             </div>
 
-                            {/* Note snippet */}
                             <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed">
                               {entry.notes || "No reflection text entered."}
                             </p>
                           </div>
 
-                          {/* Images preview row */}
                           <div className="pt-2 border-t border-slate-800/60">
                             {entry.images && entry.images.length > 0 ? (
                               <div className="flex items-center gap-1.5 overflow-hidden">
@@ -1158,7 +1143,6 @@ export default function DashboardPage() {
                       ))}
                     </div>
 
-                    {/* PAGINATION CONTROLS */}
                     {totalDebriefPages > 1 && (
                       <div className="flex items-center justify-center gap-2 pt-4">
                         <button
@@ -1203,7 +1187,7 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* INSPECT DAY MODAL (CLICKED FROM ARCHIVE) */}
+      {/* INSPECT DAY MODAL */}
       {inspectEntry && (
         <div
           onClick={() => setInspectEntry(null)}
@@ -1233,7 +1217,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Reflection Content */}
             <div className="space-y-2">
               <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 Reflections & Notes
@@ -1243,7 +1226,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Photos */}
             {inspectEntry.images && inspectEntry.images.length > 0 && (
               <div className="space-y-2">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
