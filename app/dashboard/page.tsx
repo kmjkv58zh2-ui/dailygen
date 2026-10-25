@@ -92,7 +92,7 @@ export default function DashboardPage() {
   const [currentImages, setCurrentImages] = useState<string[]>([]);
   const [saveBanner, setSaveBanner] = useState(false);
 
-  // Pagination for Past Day Debrief Cards (6 entries per page)
+  // Pagination (6 cards per page)
   const [debriefPage, setDebriefPage] = useState(1);
   const itemsPerPage = 6;
 
@@ -104,11 +104,27 @@ export default function DashboardPage() {
     const today = new Date().toISOString().split("T")[0];
     setSelectedDebriefDate(today);
 
+    // Supabase auth subscription (catches Google OAuth redirects automatically)
     if (supabase) {
       supabase.auth.getUser().then(({ data }) => {
-        if (data?.user?.email) setCurrentUserEmail(data.user.email);
+        if (data?.user?.email) {
+          setCurrentUserEmail(data.user.email);
+          localStorage.setItem("dg_user_email", data.user.email);
+        }
       }).catch(() => {});
+
+      const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user?.email) {
+          setCurrentUserEmail(session.user.email);
+          localStorage.setItem("dg_user_email", session.user.email);
+        }
+      });
+
+      return () => {
+        authListener?.subscription?.unsubscribe();
+      };
     }
+
     const savedEmail = localStorage.getItem("dg_user_email");
     if (savedEmail) setCurrentUserEmail(savedEmail);
 
@@ -321,11 +337,11 @@ export default function DashboardPage() {
   };
 
   const handleSaveDebrief = () => {
-    if (!selectedDebriefDate) return;
+    const validDate = selectedDebriefDate || new Date().toISOString().split("T")[0];
     const updated: Record<string, DebriefEntry> = {
       ...debriefEntries,
-      [selectedDebriefDate]: {
-        date: selectedDebriefDate,
+      [validDate]: {
+        date: validDate,
         notes: currentNotes,
         rating: currentRating,
         images: currentImages,
@@ -335,6 +351,23 @@ export default function DashboardPage() {
     localStorage.setItem("dg_debriefs", JSON.stringify(updated));
     setSaveBanner(true);
     setTimeout(() => setSaveBanner(false), 2200);
+  };
+
+  // DELETE A DEBRIEF ENTRY (FROM GRID OR INSPECT MODAL)
+  const handleDeleteDebrief = (dateKey: string) => {
+    if (!confirm("Are you sure you want to delete this day's entry?")) return;
+    const copy = { ...debriefEntries };
+    delete copy[dateKey];
+    setDebriefEntries(copy);
+    localStorage.setItem("dg_debriefs", JSON.stringify(copy));
+
+    if (inspectEntry?.date === dateKey) {
+      setInspectEntry(null);
+    }
+    if (selectedDebriefDate === dateKey) {
+      setCurrentNotes("");
+      setCurrentImages([]);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -364,16 +397,34 @@ export default function DashboardPage() {
     setCurrentImages((prev) => prev.filter((_, idx) => idx !== index));
   };
 
-  // Convert debrief entries map to sorted array (newest dates first)
-  const debriefList = Object.values(debriefEntries).sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  // Sort entries safely so bad date formats don't break
+  const debriefList = Object.entries(debriefEntries)
+    .map(([key, value]) => ({
+      ...value,
+      dateKey: key,
+      date: value.date || key,
+    }))
+    .sort((a, b) => {
+      const tA = new Date(a.date).getTime() || 0;
+      const tB = new Date(b.date).getTime() || 0;
+      return tB - tA;
+    });
 
   const totalDebriefPages = Math.max(1, Math.ceil(debriefList.length / itemsPerPage));
   const currentPagedDebriefs = debriefList.slice(
     (debriefPage - 1) * itemsPerPage,
     debriefPage * itemsPerPage
   );
+
+  const formatCardDate = (dateVal: string) => {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return dateVal || "Recorded Day";
+    return d.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   const completedTasks = tasks.filter((t) => t.completed).length;
   const taskRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
@@ -418,6 +469,7 @@ export default function DashboardPage() {
           </nav>
         </div>
 
+        {/* BOTTOM SECTION WITH ONLY DESIGNED AND BUILT CREDIT */}
         <div className="pt-4 border-t border-slate-800/80 flex flex-col gap-3 px-1 text-center">
           <p className="text-[11px] font-medium text-slate-400 leading-relaxed">
             Designed and Built by <br />
@@ -441,14 +493,18 @@ export default function DashboardPage() {
               Tasks: {completedTasks}/{tasks.length} ({taskRate}%)
             </div>
 
+            {/* ONLY SHOW USER BADGE AND LOGOUT IF SIGNED IN, OTHERWISE SHOW LOGIN */}
             {currentUserEmail ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl font-medium">
-                  {currentUserEmail}
-                </span>
+                <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span className="text-xs text-slate-300 font-medium">
+                    {currentUserEmail}
+                  </span>
+                </div>
                 <button
                   onClick={handleLogout}
-                  className="text-xs font-semibold text-rose-400 hover:text-rose-300 px-2 py-1"
+                  className="text-xs font-semibold text-rose-400 hover:text-rose-300 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1.5 rounded-xl transition-all"
                 >
                   Log out
                 </button>
@@ -574,7 +630,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* QUICK TASKS PREVIEW */}
+              {/* QUICK TASKS */}
               <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Quick Tasks</h3>
@@ -887,7 +943,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB 5: DAY DEBRIEF WITH VISUAL ARCHIVE & MONTH PAGINATION */}
+          {/* TAB 5: DAY DEBRIEF WITH VISUAL ARCHIVE & DELETE BUTTONS */}
           {activeTab === "debrief" && (
             <div className="space-y-10 tick-anim-fade">
               {/* SECTION A: LOG / EDIT TODAY'S DEBRIEF */}
@@ -1014,7 +1070,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* SECTION B: VISUAL ARCHIVE OF SAVED DAYS (TIMELINE CARDS & PAGINATION) */}
+              {/* SECTION B: VISUAL ARCHIVE OF SAVED DAYS (WITH DELETE BUTTON PER CARD) */}
               <div className="space-y-5 pt-4 border-t border-slate-800/80">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1022,7 +1078,7 @@ export default function DashboardPage() {
                       <span>🗂️</span> Past Days Archive
                     </h3>
                     <p className="text-xs text-slate-400">
-                      Click any day card to view the full journal entry and pictures.
+                      Click any day card to inspect, or click the trash icon to delete it.
                     </p>
                   </div>
                   <span className="text-xs text-slate-400 font-semibold bg-slate-900 border border-slate-800 px-3 py-1 rounded-xl">
@@ -1037,68 +1093,72 @@ export default function DashboardPage() {
                 ) : (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                      {currentPagedDebriefs.map((entry) => {
-                        const dateObj = new Date(entry.date);
-                        const formattedDate = dateObj.toLocaleDateString("en-US", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        });
-
-                        return (
-                          <div
-                            key={entry.date}
-                            onClick={() => setInspectEntry(entry)}
-                            className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-amber-400/50 transition-all cursor-pointer tick-card flex flex-col justify-between space-y-3 group"
-                          >
-                            <div className="space-y-2">
-                              {/* Header Date & Mood Badge */}
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-black text-white group-hover:text-amber-200 transition-colors">
-                                  {formattedDate}
-                                </span>
+                      {currentPagedDebriefs.map((entry) => (
+                        <div
+                          key={entry.dateKey}
+                          onClick={() => setInspectEntry(entry)}
+                          className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-amber-400/50 transition-all cursor-pointer tick-card flex flex-col justify-between space-y-3 group relative"
+                        >
+                          <div className="space-y-2">
+                            {/* Header Date & Mood Badge & DELETE TRASH BUTTON */}
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-black text-white group-hover:text-amber-200 transition-colors truncate">
+                                {formatCardDate(entry.date)}
+                              </span>
+                              <div className="flex items-center gap-1.5 shrink-0">
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30">
                                   {entry.rating}
                                 </span>
+                                <button
+                                  type="button"
+                                  title="Delete this entry"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteDebrief(entry.dateKey);
+                                  }}
+                                  className="text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 p-1 rounded-lg transition-colors"
+                                >
+                                  🗑️
+                                </button>
                               </div>
-
-                              {/* Note snippet */}
-                              <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed">
-                                {entry.notes || "No reflection text entered."}
-                              </p>
                             </div>
 
-                            {/* Images preview row */}
-                            <div className="pt-2 border-t border-slate-800/60">
-                              {entry.images && entry.images.length > 0 ? (
-                                <div className="flex items-center gap-1.5 overflow-hidden">
-                                  {entry.images.slice(0, 3).map((img, idx) => (
-                                    <img
-                                      key={idx}
-                                      src={img}
-                                      alt="Thumbnail"
-                                      className="w-10 h-10 object-cover rounded-lg border border-slate-700/60"
-                                    />
-                                  ))}
-                                  {entry.images.length > 3 && (
-                                    <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300">
-                                      +{entry.images.length - 3}
-                                    </div>
-                                  )}
-                                  <span className="text-[10px] text-slate-400 ml-auto font-medium">
-                                    {entry.images.length} photo{entry.images.length > 1 ? "s" : ""}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-slate-500 italic">No photos attached</span>
-                              )}
-                            </div>
+                            {/* Note snippet */}
+                            <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed">
+                              {entry.notes || "No reflection text entered."}
+                            </p>
                           </div>
-                        );
-                      })}
+
+                          {/* Images preview row */}
+                          <div className="pt-2 border-t border-slate-800/60">
+                            {entry.images && entry.images.length > 0 ? (
+                              <div className="flex items-center gap-1.5 overflow-hidden">
+                                {entry.images.slice(0, 3).map((img, idx) => (
+                                  <img
+                                    key={idx}
+                                    src={img}
+                                    alt="Thumbnail"
+                                    className="w-10 h-10 object-cover rounded-lg border border-slate-700/60"
+                                  />
+                                ))}
+                                {entry.images.length > 3 && (
+                                  <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300">
+                                    +{entry.images.length - 3}
+                                  </div>
+                                )}
+                                <span className="text-[10px] text-slate-400 ml-auto font-medium">
+                                  {entry.images.length} photo{entry.images.length > 1 ? "s" : ""}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-500 italic">No photos attached</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
-                    {/* PAGINATION CONTROLS (Page 1, 2, 3...) */}
+                    {/* PAGINATION CONTROLS */}
                     {totalDebriefPages > 1 && (
                       <div className="flex items-center justify-center gap-2 pt-4">
                         <button
@@ -1157,12 +1217,7 @@ export default function DashboardPage() {
               <div>
                 <span className="text-[10px] uppercase font-bold text-amber-300 tracking-wider">Day Debrief Record</span>
                 <h3 className="text-xl font-black text-white">
-                  {new Date(inspectEntry.date).toLocaleDateString("en-US", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  {formatCardDate(inspectEntry.date)}
                 </h3>
               </div>
               <div className="flex items-center gap-3">
@@ -1188,7 +1243,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Photos (Full Grid) */}
+            {/* Photos */}
             {inspectEntry.images && inspectEntry.images.length > 0 && (
               <div className="space-y-2">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -1208,7 +1263,15 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <div className="pt-2 text-right">
+            <div className="pt-2 flex justify-between items-center">
+              <button
+                type="button"
+                onClick={() => handleDeleteDebrief(inspectEntry.date)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-colors flex items-center gap-1.5"
+              >
+                <span>🗑️</span> Delete This Day
+              </button>
+
               <button
                 onClick={() => setInspectEntry(null)}
                 className="px-5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
