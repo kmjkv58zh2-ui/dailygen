@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Dailygen — Personal Command Centre",
-  description: "The personal command centre for disciplined achievers. Created by Rishanth Velvijayan.",
+  description: "The personal command centre for disciplined achievers. Designed and Built by Rishanth Velvijayan.",
   authors: [{ name: "Rishanth Velvijayan" }],
   creator: "Rishanth Velvijayan",
 };
@@ -25,6 +25,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        {/* FLOATING THEME & FONT SWITCHER */}
         <div style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 999999 }}>
           <details style={{ position: "relative" }}>
             <summary
@@ -135,17 +136,13 @@ export default function RootLayout({
             (function() {
               var themeStyles = {
                 default: "",
-
-                /* ========================================================
-                   BABY PINK
-                ======================================================== */
                 pink: \`
                   html, body, main, [class*="min-h-screen"] {
                     background: #fdf2f8 !important;
                     background-color: #fdf2f8 !important;
                     color: #581c87 !important;
                   }
-                  aside, nav, [class*="w-64"], [class*="sidebar"] {
+                  aside, nav, [class*="w-64"] {
                     background-color: #fce7f3 !important;
                     border-color: #fbcfe8 !important;
                   }
@@ -157,8 +154,7 @@ export default function RootLayout({
                     color: #831843 !important;
                     border: 1px solid transparent !important;
                   }
-                  aside button:hover, aside a:hover,
-                  aside button[class*="active"], aside a[class*="active"] {
+                  aside button:hover, aside a:hover {
                     background-color: #f472b6 !important;
                     color: #ffffff !important;
                     border-color: #ec4899 !important;
@@ -167,114 +163,58 @@ export default function RootLayout({
                     background-color: #fdf2f8 !important;
                     border-color: #fbcfe8 !important;
                   }
-                  header span, header a, header div {
-                    color: #831843 !important;
-                  }
-
-                  /* TOP RIGHT PILLS */
-                  header [class*="rounded-"], header [class*="px-"], header div[class*="bg-"],
-                  [class*="rounded-full"][class*="bg-slate-"], [class*="rounded-full"][class*="bg-neutral-"], [class*="rounded-full"][class*="bg-black"] {
-                    background-color: #fce7f3 !important;
-                    border: 1px solid #f472b6 !important;
-                    color: #9d174d !important;
-                  }
-                  header [class*="rounded-"] *, header div[class*="bg-"] * {
-                    color: #9d174d !important;
-                  }
-
-                  h1, h2, h3, h4, [class*="text-white"], [class*="text-slate-100"], [class*="text-neutral-100"] {
+                  h1, h2, h3, h4, [class*="text-white"], [class*="text-slate-100"] {
                     color: #4a044e !important;
                   }
-                  p, span, [class*="text-gray-"], [class*="text-slate-400"], [class*="text-neutral-400"] {
+                  p, span, [class*="text-slate-400"] {
                     color: #701a75 !important;
                   }
-                  [class*="text-amber-"], [class*="text-yellow-"], [class*="text-gold"], [class*="from-amber-"], [class*="to-yellow-"] {
+                  [class*="text-amber-"], [class*="text-yellow-"] {
                     color: #9d174d !important;
-                    -webkit-text-fill-color: #9d174d !important;
                   }
-                  [class*="bg-slate-900"], [class*="bg-neutral-900"], [class*="bg-black/"], [class*="border-slate-800"] {
+                  [class*="bg-slate-900"], [class*="bg-slate-950"], [class*="border-slate-800"] {
                     background-color: #ffffff !important;
                     border-color: #fbcfe8 !important;
                     box-shadow: 0 4px 14px rgba(236, 72, 153, 0.08) !important;
                   }
-                  main button, main a[class*="bg-"] {
+                  main button[type="submit"] {
                     background-color: #db2777 !important;
                     color: #ffffff !important;
-                    border-color: #db2777 !important;
                   }
                 \`,
-
-                /* ========================================================
-                   BABY BLUE
-                ======================================================== */
                 blue: \`
                   html, body, main, [class*="min-h-screen"] {
                     background: #f0f9ff !important;
                     background-color: #f0f9ff !important;
                     color: #0f172a !important;
                   }
-                  aside, nav, [class*="w-64"], [class*="sidebar"] {
+                  aside, nav, [class*="w-64"] {
                     background-color: #e0f2fe !important;
                     border-color: #bae6fd !important;
                   }
                   aside h1, aside h2, aside span, aside p {
                     color: #0c4a6e !important;
                   }
-                  aside button, aside a {
-                    background-color: transparent !important;
-                    color: #0369a1 !important;
-                    border: 1px solid transparent !important;
-                  }
-                  aside button:hover, aside a:hover,
-                  aside button[class*="active"], aside a[class*="active"] {
-                    background-color: #0284c7 !important;
-                    color: #ffffff !important;
-                    border-color: #0284c7 !important;
-                  }
                   header, [class*="border-b"] {
                     background-color: #f0f9ff !important;
                     border-color: #bae6fd !important;
                   }
-                  header span, header a, header div {
-                    color: #0c4a6e !important;
-                  }
-
-                  /* TOP RIGHT PILLS */
-                  header [class*="rounded-"], header [class*="px-"], header div[class*="bg-"],
-                  [class*="rounded-full"][class*="bg-slate-"], [class*="rounded-full"][class*="bg-neutral-"], [class*="rounded-full"][class*="bg-black"] {
-                    background-color: #e0f2fe !important;
-                    border: 1px solid #7dd3fc !important;
-                    color: #0284c7 !important;
-                  }
-                  header [class*="rounded-"] *, header div[class*="bg-"] * {
-                    color: #0284c7 !important;
-                  }
-
-                  h1, h2, h3, h4, [class*="text-white"], [class*="text-slate-100"], [class*="text-neutral-100"] {
+                  h1, h2, h3, h4, [class*="text-white"], [class*="text-slate-100"] {
                     color: #082f49 !important;
                   }
-                  p, span, [class*="text-gray-"], [class*="text-slate-400"], [class*="text-neutral-400"] {
+                  p, span, [class*="text-slate-400"] {
                     color: #334155 !important;
                   }
-                  [class*="text-amber-"], [class*="text-yellow-"], [class*="text-gold"], [class*="from-amber-"], [class*="to-yellow-"] {
-                    color: #0284c7 !important;
-                    -webkit-text-fill-color: #0284c7 !important;
-                  }
-                  [class*="bg-slate-900"], [class*="bg-neutral-900"], [class*="bg-black/"], [class*="border-slate-800"] {
+                  [class*="bg-slate-900"], [class*="bg-slate-950"], [class*="border-slate-800"] {
                     background-color: #ffffff !important;
                     border-color: #bae6fd !important;
                     box-shadow: 0 4px 14px rgba(2, 132, 199, 0.08) !important;
                   }
-                  main button, main a[class*="bg-"] {
+                  main button[type="submit"] {
                     background-color: #0284c7 !important;
                     color: #ffffff !important;
-                    border-color: #0284c7 !important;
                   }
                 \`,
-
-                /* ========================================================
-                   BLACK
-                ======================================================== */
                 black: \`
                   html, body, main, [class*="min-h-screen"], aside, nav, header {
                     background: #000000 !important;
@@ -282,115 +222,38 @@ export default function RootLayout({
                     color: #f4f4f5 !important;
                     border-color: #27272a !important;
                   }
-                  aside button, aside a {
-                    background-color: transparent !important;
-                    color: #a1a1aa !important;
-                    border: 1px solid transparent !important;
-                  }
-                  aside button:hover, aside a:hover,
-                  aside button[class*="active"], aside a[class*="active"] {
-                    background-color: #18181b !important;
-                    color: #ffffff !important;
-                    border: 1px solid #3f3f46 !important;
-                  }
-
-                  /* TOP RIGHT PILLS */
-                  header [class*="rounded-"], header [class*="px-"], header div[class*="bg-"],
-                  [class*="rounded-full"][class*="bg-slate-"], [class*="rounded-full"][class*="bg-neutral-"], [class*="rounded-full"][class*="bg-black"] {
-                    background-color: #18181b !important;
-                    border: 1px solid #3f3f46 !important;
-                    color: #ffffff !important;
-                  }
-                  header [class*="rounded-"] *, header div[class*="bg-"] * {
-                    color: #ffffff !important;
-                  }
-
-                  h1, h2, h3, h4, [class*="text-white"] {
-                    color: #ffffff !important;
-                  }
-                  p, span, [class*="text-gray-"], [class*="text-slate-400"] {
-                    color: #a1a1aa !important;
-                  }
-                  [class*="text-amber-"], [class*="text-yellow-"], [class*="text-gold"] {
-                    color: #facc15 !important;
-                    -webkit-text-fill-color: #facc15 !important;
-                  }
-                  [class*="bg-slate-900"], [class*="bg-neutral-900"], [class*="border-slate-800"] {
+                  [class*="bg-slate-900"], [class*="bg-slate-950"], [class*="border-slate-800"] {
                     background-color: #09090b !important;
                     border-color: #27272a !important;
                   }
-                  main button, main a[class*="bg-"] {
-                    background-color: #ffffff !important;
-                    color: #000000 !important;
-                    border-color: #ffffff !important;
-                  }
                 \`,
-
-                /* ========================================================
-                   WHITE
-                ======================================================== */
                 white: \`
                   html, body, main, [class*="min-h-screen"] {
                     background: #f8fafc !important;
                     background-color: #f8fafc !important;
                     color: #0f172a !important;
                   }
-                  aside, nav, [class*="w-64"], [class*="sidebar"] {
+                  aside, nav, [class*="w-64"] {
                     background-color: #ffffff !important;
                     border-color: #e2e8f0 !important;
                   }
-                  aside h1, aside h2, aside span, aside p {
+                  aside h1, aside span, aside p {
                     color: #0f172a !important;
-                  }
-                  aside button, aside a {
-                    background-color: transparent !important;
-                    color: #475569 !important;
-                    border: 1px solid transparent !important;
-                  }
-                  aside button:hover, aside a:hover,
-                  aside button[class*="active"], aside a[class*="active"] {
-                    background-color: #0f172a !important;
-                    color: #ffffff !important;
-                    border-color: #0f172a !important;
                   }
                   header, [class*="border-b"] {
                     background-color: #ffffff !important;
                     border-color: #e2e8f0 !important;
                   }
-                  header span, header a, header div {
-                    color: #0f172a !important;
-                  }
-
-                  /* TOP RIGHT PILLS */
-                  header [class*="rounded-"], header [class*="px-"], header div[class*="bg-"],
-                  [class*="rounded-full"][class*="bg-slate-"], [class*="rounded-full"][class*="bg-neutral-"], [class*="rounded-full"][class*="bg-black"] {
-                    background-color: #f1f5f9 !important;
-                    border: 1px solid #cbd5e1 !important;
-                    color: #0f172a !important;
-                  }
-                  header [class*="rounded-"] *, header div[class*="bg-"] * {
-                    color: #0f172a !important;
-                  }
-
                   h1, h2, h3, h4, [class*="text-white"], [class*="text-slate-100"] {
                     color: #020617 !important;
                   }
-                  p, span, [class*="text-gray-"], [class*="text-slate-400"] {
+                  p, span, [class*="text-slate-400"] {
                     color: #475569 !important;
                   }
-                  [class*="text-amber-"], [class*="text-yellow-"], [class*="text-gold"] {
-                    color: #0f172a !important;
-                    -webkit-text-fill-color: #0f172a !important;
-                  }
-                  [class*="bg-slate-900"], [class*="bg-neutral-900"], [class*="border-slate-800"] {
+                  [class*="bg-slate-900"], [class*="bg-slate-950"], [class*="border-slate-800"] {
                     background-color: #ffffff !important;
                     border-color: #e2e8f0 !important;
                     box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
-                  }
-                  main button, main a[class*="bg-"] {
-                    background-color: #0f172a !important;
-                    color: #ffffff !important;
-                    border-color: #0f172a !important;
                   }
                 \`
               };

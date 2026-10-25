@@ -2,11 +2,27 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+
+interface ScheduleBlock {
+  id: string;
+  time: string;
+  activity: string;
+  done: boolean;
+}
 
 interface Task {
   id: string;
   title: string;
+  priority: "High" | "Medium" | "Low";
   completed: boolean;
+}
+
+interface Habit {
+  id: string;
+  name: string;
+  completed: boolean;
+  streak: number;
 }
 
 interface CountdownItem {
@@ -24,23 +40,42 @@ interface DebriefEntry {
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("overview");
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  // Command Deck Quick Actions Modal
-  const [isCommandDeckOpen, setIsCommandDeckOpen] = useState(false);
+  // Strategic Focus
+  const [mainGoal, setMainGoal] = useState("Finish project deliverables & workout");
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState("");
 
-  // Strategic Focus State
-  const [strategicFocus, setStrategicFocus] = useState("Scale Dailygen to MVP Release");
-  const [isEditingFocus, setIsEditingFocus] = useState(false);
-  const [focusInput, setFocusInput] = useState("");
+  // TAB 1: DAILY PLANNER (Schedule)
+  const [schedule, setSchedule] = useState<ScheduleBlock[]>([
+    { id: "s1", time: "07:00 AM - 08:30 AM", activity: "Morning Routine & Gym", done: true },
+    { id: "s2", time: "09:00 AM - 12:30 PM", activity: "Deep Study & Project Work", done: false },
+    { id: "s3", time: "02:00 PM - 05:00 PM", activity: "Classes / Coding Execution", done: false },
+    { id: "s4", time: "08:00 PM - 09:30 PM", activity: "Review & Day Debrief", done: false },
+  ]);
+  const [newScheduleTime, setNewScheduleTime] = useState("");
+  const [newScheduleAct, setNewScheduleAct] = useState("");
 
-  // Tasks state
+  // TAB 2: TASK MATRIX
   const [tasks, setTasks] = useState<Task[]>([
-    { id: "1", title: "today gym", completed: true },
-    { id: "2", title: "test task", completed: false },
+    { id: "t1", title: "Complete math sample questions", priority: "High", completed: false },
+    { id: "t2", title: "Review Dailygen push", priority: "Medium", completed: true },
+    { id: "t3", title: "Pack bag for tomorrow", priority: "Low", completed: false },
   ]);
   const [newTaskInput, setNewTaskInput] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState<"High" | "Medium" | "Low">("Medium");
 
-  // Countdowns state
+  // TAB 3: HABITS TRACKER
+  const [habits, setHabits] = useState<Habit[]>([
+    { id: "h1", name: "Drink 3L Water", completed: true, streak: 5 },
+    { id: "h2", name: "Gym / 45m Exercise", completed: false, streak: 3 },
+    { id: "h3", name: "No Phone 30m Before Bed", completed: false, streak: 2 },
+  ]);
+  const [newHabitName, setNewHabitName] = useState("");
+
+  // TAB 4: COUNTDOWNS
   const [countdowns, setCountdowns] = useState<CountdownItem[]>([
     { id: "c1", title: "Board Exams", targetDate: "2027-03-01T09:00" },
     { id: "c2", title: "Friend's Birthday", targetDate: "2026-11-15T00:00" },
@@ -48,7 +83,7 @@ export default function DashboardPage() {
   const [newCountTitle, setNewCountTitle] = useState("");
   const [newCountDate, setNewCountDate] = useState("");
 
-  // Day Debrief state
+  // TAB 5: DAY DEBRIEF
   const [selectedDebriefDate, setSelectedDebriefDate] = useState<string>("");
   const [debriefEntries, setDebriefEntries] = useState<Record<string, DebriefEntry>>({});
   const [currentNotes, setCurrentNotes] = useState("");
@@ -61,33 +96,211 @@ export default function DashboardPage() {
     const today = new Date().toISOString().split("T")[0];
     setSelectedDebriefDate(today);
 
-    const savedFocus = localStorage.getItem("dg_strategic_focus");
-    if (savedFocus) setStrategicFocus(savedFocus);
-
-    const savedTasks = localStorage.getItem("dg_tasks");
-    if (savedTasks) {
-      try { setTasks(JSON.parse(savedTasks)); } catch {}
+    if (supabase) {
+      supabase.auth.getUser().then(({ data }) => {
+        if (data?.user?.email) setCurrentUserEmail(data.user.email);
+      }).catch(() => {});
     }
+    const savedEmail = localStorage.getItem("dg_user_email");
+    if (savedEmail) setCurrentUserEmail(savedEmail);
 
-    const savedCounts = localStorage.getItem("dg_countdowns");
-    if (savedCounts) {
-      try { setCountdowns(JSON.parse(savedCounts)); } catch {}
-    }
+    try {
+      const g = localStorage.getItem("dg_main_goal");
+      if (g) setMainGoal(g);
 
-    const savedDebriefs = localStorage.getItem("dg_debriefs");
-    if (savedDebriefs) {
-      try {
-        const parsed = JSON.parse(savedDebriefs);
+      const sch = localStorage.getItem("dg_schedule");
+      if (sch) setSchedule(JSON.parse(sch));
+
+      const t = localStorage.getItem("dg_tasks");
+      if (t) setTasks(JSON.parse(t));
+
+      const h = localStorage.getItem("dg_habits");
+      if (h) setHabits(JSON.parse(h));
+
+      const c = localStorage.getItem("dg_countdowns");
+      if (c) setCountdowns(JSON.parse(c));
+
+      const d = localStorage.getItem("dg_debriefs");
+      if (d) {
+        const parsed = JSON.parse(d);
         setDebriefEntries(parsed);
         if (parsed[today]) {
           setCurrentNotes(parsed[today].notes || "");
           setCurrentRating(parsed[today].rating || "Great");
           setCurrentImages(parsed[today].images || []);
         }
-      } catch {}
-    }
+      }
+    } catch {}
   }, []);
 
+  const handleGoogleAuth = async (action: "login" | "signup") => {
+    if (!supabase) {
+      const email = prompt(`[${action.toUpperCase()}] Enter your Google email to connect:`);
+      if (email && email.includes("@")) {
+        setCurrentUserEmail(email);
+        localStorage.setItem("dg_user_email", email);
+        setIsAuthModalOpen(false);
+      }
+      return;
+    }
+
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: typeof window !== "undefined" ? window.location.href : undefined,
+        },
+      });
+    } catch {
+      const email = prompt(`[${action.toUpperCase()}] Enter your Google email:`);
+      if (email && email.includes("@")) {
+        setCurrentUserEmail(email);
+        localStorage.setItem("dg_user_email", email);
+        setIsAuthModalOpen(false);
+      }
+    }
+  };
+
+  const handleLogout = async () => {
+    if (supabase) {
+      try { await supabase.auth.signOut(); } catch {}
+    }
+    localStorage.removeItem("dg_user_email");
+    setCurrentUserEmail(null);
+  };
+
+  // SCHEDULE HANDLERS
+  const addScheduleBlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newScheduleAct.trim()) return;
+    const updated = [
+      ...schedule,
+      {
+        id: Date.now().toString(),
+        time: newScheduleTime.trim() || "All Day",
+        activity: newScheduleAct.trim(),
+        done: false,
+      },
+    ];
+    setSchedule(updated);
+    setNewScheduleTime("");
+    setNewScheduleAct("");
+    localStorage.setItem("dg_schedule", JSON.stringify(updated));
+  };
+
+  const toggleScheduleBlock = (id: string) => {
+    const updated = schedule.map((s) => (s.id === id ? { ...s, done: !s.done } : s));
+    setSchedule(updated);
+    localStorage.setItem("dg_schedule", JSON.stringify(updated));
+  };
+
+  const deleteScheduleBlock = (id: string) => {
+    const updated = schedule.filter((s) => s.id !== id);
+    setSchedule(updated);
+    localStorage.setItem("dg_schedule", JSON.stringify(updated));
+  };
+
+  // TASK HANDLERS
+  const addTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaskInput.trim()) return;
+    const updated = [
+      ...tasks,
+      {
+        id: Date.now().toString(),
+        title: newTaskInput.trim(),
+        priority: newTaskPriority,
+        completed: false,
+      },
+    ];
+    setTasks(updated);
+    setNewTaskInput("");
+    localStorage.setItem("dg_tasks", JSON.stringify(updated));
+  };
+
+  const toggleTask = (id: string) => {
+    const updated = tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t));
+    setTasks(updated);
+    localStorage.setItem("dg_tasks", JSON.stringify(updated));
+  };
+
+  const deleteTask = (id: string) => {
+    const updated = tasks.filter((t) => t.id !== id);
+    setTasks(updated);
+    localStorage.setItem("dg_tasks", JSON.stringify(updated));
+  };
+
+  // HABITS HANDLERS
+  const addHabit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newHabitName.trim()) return;
+    const updated = [
+      ...habits,
+      { id: Date.now().toString(), name: newHabitName.trim(), completed: false, streak: 0 },
+    ];
+    setHabits(updated);
+    setNewHabitName("");
+    localStorage.setItem("dg_habits", JSON.stringify(updated));
+  };
+
+  const toggleHabit = (id: string) => {
+    const updated = habits.map((h) => {
+      if (h.id === id) {
+        const next = !h.completed;
+        return {
+          ...h,
+          completed: next,
+          streak: next ? h.streak + 1 : Math.max(0, h.streak - 1),
+        };
+      }
+      return h;
+    });
+    setHabits(updated);
+    localStorage.setItem("dg_habits", JSON.stringify(updated));
+  };
+
+  const deleteHabit = (id: string) => {
+    const updated = habits.filter((h) => h.id !== id);
+    setHabits(updated);
+    localStorage.setItem("dg_habits", JSON.stringify(updated));
+  };
+
+  // COUNTDOWNS
+  const addCountdown = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCountTitle.trim() || !newCountDate) return;
+    const updated = [
+      ...countdowns,
+      { id: Date.now().toString(), title: newCountTitle.trim(), targetDate: newCountDate },
+    ];
+    setCountdowns(updated);
+    setNewCountTitle("");
+    setNewCountDate("");
+    localStorage.setItem("dg_countdowns", JSON.stringify(updated));
+  };
+
+  const removeCountdown = (id: string) => {
+    const updated = countdowns.filter((c) => c.id !== id);
+    setCountdowns(updated);
+    localStorage.setItem("dg_countdowns", JSON.stringify(updated));
+  };
+
+  // FULL-FORM COUNTDOWN FORMATTING FUNCTION
+  const getFullCountdownText = (targetStr: string) => {
+    if (!mounted) return "Calculating remaining time...";
+    const diff = new Date(targetStr).getTime() - new Date().getTime();
+    if (diff <= 0) return "Passed";
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+
+    const dayText = days === 1 ? "1 day" : `${days} days`;
+    const hourText = hours === 1 ? "1 hour" : `${hours} hours`;
+
+    return `${dayText} and ${hourText} remaining`;
+  };
+
+  // DAY DEBRIEF
   const handleDateChange = (dateStr: string) => {
     setSelectedDebriefDate(dateStr);
     const entry = debriefEntries[dateStr];
@@ -123,7 +336,7 @@ export default function DashboardPage() {
     if (!files) return;
 
     if (currentImages.length + files.length > 5) {
-      alert("You can upload up to 5 images per day.");
+      alert("You can upload a maximum of 5 images per day.");
       return;
     }
 
@@ -145,86 +358,33 @@ export default function DashboardPage() {
     setCurrentImages((prev) => prev.filter((_, idx) => idx !== index));
   };
 
-  const toggleTask = (id: string) => {
-    const updated = tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t));
-    setTasks(updated);
-    localStorage.setItem("dg_tasks", JSON.stringify(updated));
-  };
-
-  const addTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTaskInput.trim()) return;
-    const updated = [...tasks, { id: Date.now().toString(), title: newTaskInput.trim(), completed: false }];
-    setTasks(updated);
-    setNewTaskInput("");
-    localStorage.setItem("dg_tasks", JSON.stringify(updated));
-  };
-
-  const addCountdown = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCountTitle.trim() || !newCountDate) return;
-    const updated = [...countdowns, { id: Date.now().toString(), title: newCountTitle.trim(), targetDate: newCountDate }];
-    setCountdowns(updated);
-    setNewCountTitle("");
-    setNewCountDate("");
-    localStorage.setItem("dg_countdowns", JSON.stringify(updated));
-  };
-
-  const removeCountdown = (id: string) => {
-    const updated = countdowns.filter((c) => c.id !== id);
-    setCountdowns(updated);
-    localStorage.setItem("dg_countdowns", JSON.stringify(updated));
-  };
-
-  const getDaysLeft = (targetStr: string) => {
-    if (!mounted) return { days: 0, hours: 0, expired: false };
-    const diff = new Date(targetStr).getTime() - new Date().getTime();
-    if (diff <= 0) return { days: 0, hours: 0, expired: true };
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    return { days, hours, expired: false };
-  };
-
-  const handleSaveStrategicFocus = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!focusInput.trim()) return;
-    setStrategicFocus(focusInput.trim());
-    localStorage.setItem("dg_strategic_focus", focusInput.trim());
-    setIsEditingFocus(false);
-  };
-
-  const completedCount = tasks.filter((t) => t.completed).length;
-  const completionRate = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
+  const completedTasks = tasks.filter((t) => t.completed).length;
+  const taskRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+  const doneHabits = habits.filter((h) => h.completed).length;
 
   return (
-    <div className="min-h-screen flex bg-slate-950 text-slate-100 antialiased selection:bg-amber-400 selection:text-slate-900">
+    <div className="min-h-screen flex bg-[#060913] text-slate-100 antialiased selection:bg-amber-400 selection:text-slate-900 font-sans">
       {/* SIDEBAR */}
-      <aside className="w-64 border-r border-slate-800 bg-slate-950 flex flex-col justify-between p-5 select-none shrink-0">
+      <aside className="w-64 border-r border-slate-800 bg-[#060913] flex flex-col justify-between p-5 select-none shrink-0">
         <div className="space-y-6">
-          <Link
-            href="/"
-            className="flex items-center gap-3 px-2.5 py-2 rounded-xl cursor-pointer hover:bg-slate-900 border border-transparent hover:border-slate-800 transition-all group"
-            title="Return to Introduction / Launch Deck"
-          >
-            <div className="w-9 h-9 rounded-xl bg-amber-200 text-slate-950 font-bold flex items-center justify-center text-base shadow-sm group-hover:scale-105 transition-transform">
+          {/* Logo clean without any text below */}
+          <Link href="/" className="flex items-center gap-3 px-2 py-1 group">
+            <div className="w-9 h-9 rounded-xl bg-amber-200 text-slate-950 font-black flex items-center justify-center text-base shadow-sm group-hover:scale-105 transition-transform">
               D
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-sm font-semibold tracking-wide uppercase text-slate-100">Dailygen</h1>
-                <span className="text-[9px] bg-amber-400/20 text-amber-300 font-bold px-1.5 py-0.2 rounded">DOCK</span>
-              </div>
-              <p className="text-[10px] tracking-wider text-amber-200/90 font-medium">Created by Rishanth Velvijayan</p>
+              <h1 className="text-sm font-extrabold tracking-widest uppercase text-white">Dailygen</h1>
             </div>
           </Link>
 
+          {/* Navigation */}
           <nav className="space-y-1">
             {[
-              { id: "overview", label: "Overview Deck", icon: "❖" },
+              { id: "overview", label: "Overview", icon: "❖" },
               { id: "planner", label: "1. Daily Planner", icon: "🕒" },
               { id: "matrix", label: "2. Task Matrix", icon: "✓" },
               { id: "habits", label: "3. Habits Tracker", icon: "⚡" },
-              { id: "countdown", label: "4. Countdown", icon: "⏳" },
+              { id: "countdown", label: "4. Countdowns", icon: "⏳" },
               { id: "debrief", label: "5. Day Debrief", icon: "✦" },
             ].map((tab) => (
               <button
@@ -232,7 +392,7 @@ export default function DashboardPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide tick-nav-btn ${
                   activeTab === tab.id
-                    ? "bg-slate-800/80 text-white shadow-sm ring-1 ring-slate-700/60"
+                    ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-700/60"
                     : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60"
                 }`}
               >
@@ -243,24 +403,19 @@ export default function DashboardPage() {
           </nav>
         </div>
 
-        {/* PROFILE & FOOTER */}
-        <div className="pt-4 border-t border-slate-900 flex flex-col gap-2 px-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300">
-              RV
-            </div>
-            <div className="truncate">
-              <p className="text-xs font-medium text-slate-200 truncate">Rishanth Velvijayan</p>
-              <p className="text-[10px] text-emerald-400 font-medium">● Lead Architect</p>
-            </div>
-          </div>
+        {/* BOTTOM SECTION WITH ONLY DESIGNED AND BUILT CREDIT */}
+        <div className="pt-4 border-t border-slate-800/80 flex flex-col gap-3 px-1 text-center">
+          <p className="text-[11px] font-medium text-slate-400 leading-relaxed">
+            Designed and Built by <br />
+            <span className="text-amber-200 font-bold tracking-wide">Rishanth Velvijayan</span>
+          </p>
         </div>
       </aside>
 
       {/* MAIN VIEWPORT */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* HEADER BAR */}
-        <header className="h-16 border-b border-slate-800 px-8 flex items-center justify-between bg-slate-950/40 backdrop-blur-md sticky top-0 z-10">
+        {/* HEADER BAR WITH TOP-RIGHT LOGIN / SIGNUP */}
+        <header className="h-16 border-b border-slate-800 px-8 flex items-center justify-between bg-[#060913]/60 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-slate-400 uppercase">
             <span>Dailygen</span>
             <span className="text-slate-600">/</span>
@@ -268,52 +423,73 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsCommandDeckOpen(true)}
-              className="text-xs font-bold text-amber-200/90 hover:text-amber-200 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/20 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
-            >
-              <span>⌘</span> Command Deck
-            </button>
-            <div className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-900 border border-slate-800 text-slate-200 shadow-sm">
-              {completionRate}%
+            <div className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-900 border border-slate-800 text-slate-200 shadow-sm hidden sm:inline-block">
+              Tasks: {completedTasks}/{tasks.length} ({taskRate}%)
             </div>
-            <div className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-900 border border-slate-800 text-slate-200 shadow-sm">
-              {completedCount}/{tasks.length}
-            </div>
+
+            {/* TOP-RIGHT LOGIN / SIGNUP BUTTON */}
+            {currentUserEmail ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl font-medium">
+                  {currentUserEmail}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="text-xs font-semibold text-rose-400 hover:text-rose-300 px-2 py-1"
+                >
+                  Log out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900 border border-slate-700/80 text-white hover:bg-slate-800 transition-all shadow-sm flex items-center gap-1.5"
+              >
+                <span>Login / Sign up</span>
+              </button>
+            )}
           </div>
         </header>
 
         {/* CONTENT PANELS */}
         <div className="p-8 max-w-5xl w-full mx-auto space-y-8">
-          {/* TAB 1: OVERVIEW DECK */}
+          {/* TAB 0: OVERVIEW */}
           {activeTab === "overview" && (
             <div className="space-y-8 tick-anim-fade">
               <div className="space-y-2">
                 <span className="text-[11px] font-bold tracking-widest uppercase text-amber-300 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-                  Today's Strategic Focus
+                  Today's Main Goal
                 </span>
 
-                {isEditingFocus ? (
-                  <form onSubmit={handleSaveStrategicFocus} className="flex gap-2 max-w-xl pt-1">
+                {isEditingGoal ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!goalInput.trim()) return;
+                      setMainGoal(goalInput.trim());
+                      localStorage.setItem("dg_main_goal", goalInput.trim());
+                      setIsEditingGoal(false);
+                    }}
+                    className="flex gap-2 max-w-xl pt-1"
+                  >
                     <input
                       type="text"
                       autoFocus
-                      value={focusInput}
-                      onChange={(e) => setFocusInput(e.target.value)}
-                      placeholder="Redefine your single critical priority..."
+                      value={goalInput}
+                      onChange={(e) => setGoalInput(e.target.value)}
                       className="flex-1 bg-slate-900 border border-amber-400/60 rounded-xl px-4 py-2 text-sm text-white focus:outline-none"
                     />
                     <button
                       type="submit"
-                      className="bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs hover:bg-amber-300 transition-colors"
+                      className="bg-amber-300 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs hover:bg-amber-200"
                     >
                       Save
                     </button>
                     <button
                       type="button"
-                      onClick={() => setIsEditingFocus(false)}
-                      className="bg-slate-800 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs hover:bg-slate-700 transition-colors"
+                      onClick={() => setIsEditingGoal(false)}
+                      className="bg-slate-800 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs"
                     >
                       Cancel
                     </button>
@@ -321,51 +497,52 @@ export default function DashboardPage() {
                 ) : (
                   <div
                     onClick={() => {
-                      setFocusInput(strategicFocus);
-                      setIsEditingFocus(true);
+                      setGoalInput(mainGoal);
+                      setIsEditingGoal(true);
                     }}
                     className="cursor-pointer group inline-block"
                   >
                     <h2 className="text-3xl font-extrabold tracking-tight text-white group-hover:text-amber-200 transition-colors">
-                      {strategicFocus}
+                      {mainGoal}
                     </h2>
-                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
-                      <span>Click to redefine today's single most critical priority.</span>
-                      <span className="text-[10px] text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity">✎ Edit</span>
-                    </p>
+                    <p className="text-xs text-slate-400 mt-1">Click to edit today's main goal ✎</p>
                   </div>
                 )}
               </div>
 
-              {/* THREE METRIC SUMMARY CARDS */}
+              {/* THREE SUMMARY CARDS */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div 
+                <div
+                  onClick={() => setActiveTab("planner")}
+                  className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 tick-card space-y-3 cursor-pointer"
+                >
+                  <div className="flex justify-between items-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    <span>Schedule</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300">
+                      {schedule.filter((s) => !s.done).length} Pending
+                    </span>
+                  </div>
+                  <div className="text-3xl font-extrabold text-white">
+                    {schedule.filter((s) => s.done).length} / {schedule.length}
+                  </div>
+                  <p className="text-[11px] text-slate-400">Daily planner schedule items completed</p>
+                </div>
+
+                <div
                   onClick={() => setActiveTab("matrix")}
                   className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 tick-card space-y-3 cursor-pointer"
                 >
                   <div className="flex justify-between items-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    <span>Active Tasks</span>
+                    <span>Tasks</span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300">
-                      {tasks.filter((t) => !t.completed).length} Pending
+                      {tasks.filter((t) => !t.completed).length} Incomplete
                     </span>
                   </div>
-                  <div className="text-3xl font-extrabold text-white">{completionRate}%</div>
-                  <p className="text-[11px] text-slate-400">Overall task completion velocity</p>
+                  <div className="text-3xl font-extrabold text-white">{taskRate}%</div>
+                  <p className="text-[11px] text-slate-400">Task matrix checklist completion</p>
                 </div>
 
-                <div 
-                  onClick={() => setActiveTab("habits")}
-                  className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 tick-card space-y-3 cursor-pointer"
-                >
-                  <div className="flex justify-between items-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    <span>Habit Cadence</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300">0 Done</span>
-                  </div>
-                  <div className="text-3xl font-extrabold text-white">0 Staked</div>
-                  <p className="text-[11px] text-slate-400">Daily discipline & routines</p>
-                </div>
-
-                <div 
+                <div
                   onClick={() => setActiveTab("countdown")}
                   className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 tick-card space-y-3 cursor-pointer"
                 >
@@ -375,33 +552,33 @@ export default function DashboardPage() {
                       {countdowns.length} Events
                     </span>
                   </div>
-                  <div className="text-3xl font-extrabold text-white">
-                    {countdowns[0] ? `${getDaysLeft(countdowns[0].targetDate).days}d` : "None"}
+                  <div className="text-base font-extrabold text-amber-300 leading-snug">
+                    {countdowns[0] ? getFullCountdownText(countdowns[0].targetDate) : "None"}
                   </div>
                   <p className="text-[11px] text-slate-400 truncate">
-                    {countdowns[0] ? countdowns[0].title : "Add event in Countdown tab"}
+                    {countdowns[0] ? countdowns[0].title : "Add an event in Countdowns"}
                   </p>
                 </div>
               </div>
 
-              {/* TACTICAL FOCUS MATRIX */}
+              {/* QUICK TASKS PREVIEW */}
               <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Tactical Focus Matrix</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Quick Tasks</h3>
                   <button
                     onClick={() => setActiveTab("matrix")}
-                    className="text-xs font-bold text-white bg-sky-600 hover:bg-sky-500 px-3.5 py-1.5 rounded-lg transition-all hover:scale-105 active:scale-95"
+                    className="text-xs font-bold text-white bg-sky-600 hover:bg-sky-500 px-3.5 py-1.5 rounded-lg transition-all"
                   >
-                    Open Task Matrix →
+                    View All Tasks →
                   </button>
                 </div>
 
                 <div className="space-y-2">
-                  {tasks.map((task) => (
+                  {tasks.slice(0, 4).map((task) => (
                     <div
                       key={task.id}
                       onClick={() => toggleTask(task.id)}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 cursor-pointer tick-card"
+                      className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 cursor-pointer tick-card"
                     >
                       <input
                         type="checkbox"
@@ -423,25 +600,103 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB 2, 3: TASK MATRIX / PLANNER / HABITS */}
-          {(activeTab === "matrix" || activeTab === "planner" || activeTab === "habits") && (
+          {/* TAB 1: DAILY PLANNER */}
+          {activeTab === "planner" && (
             <div className="space-y-6 tick-anim-fade">
               <div>
-                <h2 className="text-xl font-bold text-white">Execution Board</h2>
-                <p className="text-xs text-slate-400">Capture, organize, and execute priorities instantly.</p>
+                <h2 className="text-xl font-bold text-white">Daily Schedule & Time Blocks</h2>
+                <p className="text-xs text-slate-400">Map out your day by time from morning to evening.</p>
               </div>
 
-              <form onSubmit={addTask} className="flex gap-2">
+              <form onSubmit={addScheduleBlock} className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
                 <input
                   type="text"
-                  placeholder="Add a new task (press Enter)..."
-                  value={newTaskInput}
-                  onChange={(e) => setNewTaskInput(e.target.value)}
-                  className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-400/50 transition-colors"
+                  placeholder="Time (e.g. 02:00 PM - 04:00 PM)"
+                  value={newScheduleTime}
+                  onChange={(e) => setNewScheduleTime(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+                />
+                <input
+                  type="text"
+                  placeholder="What are you doing? (e.g. Study Chemistry)"
+                  value={newScheduleAct}
+                  onChange={(e) => setNewScheduleAct(e.target.value)}
+                  className="sm:col-span-2 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
                 />
                 <button
                   type="submit"
-                  className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-sm transition-all hover:scale-105 active:scale-95 shadow-sm"
+                  className="bg-amber-300 hover:bg-amber-200 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-all shadow-sm"
+                >
+                  + Add to Schedule
+                </button>
+              </form>
+
+              <div className="space-y-3">
+                {schedule.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => toggleScheduleBlock(item.id)}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 cursor-pointer tick-card"
+                  >
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="checkbox"
+                        checked={item.done}
+                        onChange={() => {}}
+                        className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-400 tick-checkbox cursor-pointer"
+                      />
+                      <div>
+                        <span className="text-[11px] font-bold text-amber-300/90 block uppercase tracking-wide">
+                          {item.time}
+                        </span>
+                        <span className={`text-sm font-medium ${item.done ? "line-through text-slate-500" : "text-slate-100"}`}>
+                          {item.activity}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteScheduleBlock(item.id);
+                      }}
+                      className="text-xs text-slate-500 hover:text-rose-400 px-2 py-1 rounded"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: TASK MATRIX */}
+          {activeTab === "matrix" && (
+            <div className="space-y-6 tick-anim-fade">
+              <div>
+                <h2 className="text-xl font-bold text-white">Task Matrix</h2>
+                <p className="text-xs text-slate-400">Capture your tasks, set priorities, and check them off.</p>
+              </div>
+
+              <form onSubmit={addTask} className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  placeholder="What do you need to do? (press Enter)..."
+                  value={newTaskInput}
+                  onChange={(e) => setNewTaskInput(e.target.value)}
+                  className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                />
+                <select
+                  value={newTaskPriority}
+                  onChange={(e) => setNewTaskPriority(e.target.value as "High" | "Medium" | "Low")}
+                  className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none"
+                >
+                  <option value="High">🔴 High Priority</option>
+                  <option value="Medium">🟡 Medium</option>
+                  <option value="Low">🟢 Low</option>
+                </select>
+                <button
+                  type="submit"
+                  className="bg-amber-300 hover:bg-amber-200 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition-all"
                 >
                   Add Task
                 </button>
@@ -464,13 +719,24 @@ export default function DashboardPage() {
                       <span className={`text-sm ${task.completed ? "line-through text-slate-500" : "text-slate-200"}`}>
                         {task.title}
                       </span>
+                      <span
+                        className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${
+                          task.priority === "High"
+                            ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                            : task.priority === "Medium"
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                            : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        }`}
+                      >
+                        {task.priority}
+                      </span>
                     </div>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setTasks(tasks.filter((t) => t.id !== task.id));
+                        deleteTask(task.id);
                       }}
-                      className="text-xs text-slate-500 hover:text-rose-400 px-2 py-1 rounded transition-colors"
+                      className="text-xs text-slate-500 hover:text-rose-400 px-2 py-1 rounded"
                     >
                       Delete
                     </button>
@@ -480,12 +746,78 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB 4: COUNTDOWN */}
+          {/* TAB 3: HABITS TRACKER */}
+          {activeTab === "habits" && (
+            <div className="space-y-6 tick-anim-fade">
+              <div>
+                <h2 className="text-xl font-bold text-white">Habits Tracker</h2>
+                <p className="text-xs text-slate-400">Build streaks and track daily routines.</p>
+              </div>
+
+              <form onSubmit={addHabit} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="New habit (e.g. Read 20 pages, Gym, Drink water)..."
+                  value={newHabitName}
+                  onChange={(e) => setNewHabitName(e.target.value)}
+                  className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-400"
+                />
+                <button
+                  type="submit"
+                  className="bg-amber-300 hover:bg-amber-200 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition-all"
+                >
+                  Add Habit
+                </button>
+              </form>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {habits.map((habit) => (
+                  <div
+                    key={habit.id}
+                    onClick={() => toggleHabit(habit.id)}
+                    className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 flex justify-between items-center cursor-pointer tick-card"
+                  >
+                    <div>
+                      <h4 className={`text-sm font-bold ${habit.completed ? "text-emerald-400" : "text-white"}`}>
+                        {habit.name}
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-1">
+                        🔥 Streak: <span className="font-bold text-slate-200">{habit.streak} days</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition-all ${
+                          habit.completed
+                            ? "bg-emerald-500 text-slate-950 shadow-md"
+                            : "bg-slate-800 text-slate-500 border border-slate-700"
+                        }`}
+                      >
+                        {habit.completed ? "✓" : "○"}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteHabit(habit.id);
+                        }}
+                        className="text-xs text-slate-500 hover:text-rose-400 p-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: COUNTDOWN (WITH FULL-FORM WORDING) */}
           {activeTab === "countdown" && (
             <div className="space-y-6 tick-anim-fade">
               <div>
                 <h2 className="text-xl font-bold text-white">Event Countdowns</h2>
-                <p className="text-xs text-slate-400">Keep critical deadlines, birthdays, and exams front of mind.</p>
+                <p className="text-xs text-slate-400">Track exams, birthdays, and deadlines in complete days and hours.</p>
               </div>
 
               <form onSubmit={addCountdown} className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
@@ -504,44 +836,41 @@ export default function DashboardPage() {
                 />
                 <button
                   type="submit"
-                  className="bg-sky-500 hover:bg-sky-400 text-white font-bold py-2 rounded-xl text-xs transition-all hover:scale-105 active:scale-95 shadow-sm"
+                  className="bg-sky-500 hover:bg-sky-400 text-white font-bold py-2 rounded-xl text-xs transition-all shadow-sm"
                 >
                   Create Countdown
                 </button>
               </form>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {countdowns.map((cd) => {
-                  const left = getDaysLeft(cd.targetDate);
-                  return (
-                    <div
-                      key={cd.id}
-                      className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 flex justify-between items-center tick-card"
-                    >
-                      <div className="space-y-1">
-                        <h4 className="text-base font-bold text-white">{cd.title}</h4>
-                        <p className="text-xs text-slate-400">
-                          Target: {new Date(cd.targetDate).toLocaleDateString(undefined, { dateStyle: "medium" })}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="text-2xl font-black text-amber-300">
-                            {left.expired ? "Passed" : `${left.days}d ${left.hours}h`}
-                          </div>
-                          <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Remaining</p>
-                        </div>
-                        <button
-                          onClick={() => removeCountdown(cd.id)}
-                          className="text-slate-600 hover:text-rose-400 text-sm p-1 transition-colors"
-                        >
-                          ✕
-                        </button>
-                      </div>
+                {countdowns.map((cd) => (
+                  <div
+                    key={cd.id}
+                    className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 flex justify-between items-center tick-card"
+                  >
+                    <div className="space-y-1">
+                      <h4 className="text-base font-bold text-white">{cd.title}</h4>
+                      <p className="text-xs text-slate-400">
+                        Target: {new Date(cd.targetDate).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                      </p>
                     </div>
-                  );
-                })}
+
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        {/* FULL FORM STRING: e.g. "130 days and 2 hours remaining" */}
+                        <div className="text-base sm:text-lg font-black text-amber-300">
+                          {getFullCountdownText(cd.targetDate)}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeCountdown(cd.id)}
+                        className="text-slate-600 hover:text-rose-400 text-sm p-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -552,7 +881,7 @@ export default function DashboardPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-white">Day Debrief & Journal</h2>
-                  <p className="text-xs text-slate-400">Capture what unfolded today, document highlights, and archive snapshots.</p>
+                  <p className="text-xs text-slate-400">Save how your day went and upload up to 5 photos.</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -564,7 +893,7 @@ export default function DashboardPage() {
                   />
                   <button
                     onClick={handleSaveDebrief}
-                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-1.5 rounded-xl text-xs transition-all hover:scale-105 active:scale-95 shadow-sm"
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-1.5 rounded-xl text-xs transition-all shadow-sm"
                   >
                     Save Entry
                   </button>
@@ -573,7 +902,7 @@ export default function DashboardPage() {
 
               {saveBanner && (
                 <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2 tick-anim-fade">
-                  <span>✓</span> Entry for {selectedDebriefDate} saved successfully!
+                  <span>✓</span> Entry for {selectedDebriefDate} saved!
                 </div>
               )}
 
@@ -588,9 +917,9 @@ export default function DashboardPage() {
                         key={rate}
                         type="button"
                         onClick={() => setCurrentRating(rate)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 active:scale-95 ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                           currentRating === rate
-                            ? "bg-amber-400 text-slate-950 font-bold"
+                            ? "bg-amber-300 text-slate-950 font-bold"
                             : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
                         }`}
                       >
@@ -602,13 +931,13 @@ export default function DashboardPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                    Daily Reflections & Debrief Notes
+                    What happened today?
                   </label>
                   <textarea
                     rows={6}
                     value={currentNotes}
                     onChange={(e) => setCurrentNotes(e.target.value)}
-                    placeholder="Write what all happened today, accomplishments, lessons, and thoughts..."
+                    placeholder="Write what all happened today, accomplishments, and lessons..."
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-amber-400/50 resize-y"
                   />
                 </div>
@@ -617,7 +946,7 @@ export default function DashboardPage() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                      Day Snapshots ({currentImages.length}/5)
+                      Photos ({currentImages.length}/5)
                     </label>
                     {currentImages.length < 5 && (
                       <label className="cursor-pointer text-xs font-semibold text-sky-400 hover:text-sky-300">
@@ -636,8 +965,8 @@ export default function DashboardPage() {
                   {currentImages.length === 0 ? (
                     <div className="border border-dashed border-slate-800 rounded-xl p-8 text-center">
                       <p className="text-xs text-slate-500">No photos attached for {selectedDebriefDate}.</p>
-                      <label className="inline-block mt-2 text-xs font-semibold text-amber-400 hover:text-amber-300 cursor-pointer">
-                        Upload up to 5 pictures
+                      <label className="inline-block mt-2 text-xs font-semibold text-amber-300 hover:text-amber-200 cursor-pointer">
+                        Upload up to 5 photos
                         <input
                           type="file"
                           accept="image/*"
@@ -674,56 +1003,55 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* EXECUTIVE COMMAND DECK OVERLAY MODAL */}
-      {isCommandDeckOpen && (
+      {/* GOOGLE AUTH POPUP MODAL */}
+      {isAuthModalOpen && (
         <div
-          onClick={() => setIsCommandDeckOpen(false)}
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 tick-anim-fade"
+          onClick={() => setIsAuthModalOpen(false)}
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 tick-anim-fade"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden tick-modal-pop text-slate-100"
+            className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-2xl text-slate-100 space-y-6 tick-modal-pop"
           >
-            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
-              <div className="flex items-center gap-2">
-                <span className="text-amber-300 font-bold">⌘</span>
-                <span className="text-xs font-bold uppercase tracking-widest text-slate-300">Executive Command Deck</span>
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-bold text-white">Dailygen Account</h3>
+                <p className="text-xs text-slate-400 mt-1">Connect your Google account to sync your schedule & debriefs.</p>
               </div>
               <button
-                onClick={() => setIsCommandDeckOpen(false)}
-                className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded"
+                onClick={() => setIsAuthModalOpen(false)}
+                className="text-slate-400 hover:text-white text-sm p-1"
               >
-                ESC ✕
+                ✕
               </button>
             </div>
 
-            <div className="p-4 space-y-2">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-2">Quick Navigation</div>
-              {[
-                { id: "overview", label: "Open Strategic Overview Deck", desc: "View task velocity & focus" },
-                { id: "matrix", label: "Jump to Execution Board", desc: "Check off active items" },
-                { id: "countdown", label: "Open Event Countdowns", desc: "Track birthdays and exam dates" },
-                { id: "debrief", label: "Open Day Debrief & Photos", desc: "Log journal notes and snapshots" },
-              ].map((cmd) => (
-                <div
-                  key={cmd.id}
-                  onClick={() => {
-                    setActiveTab(cmd.id);
-                    setIsCommandDeckOpen(false);
-                  }}
-                  className="p-3 rounded-xl hover:bg-slate-800/80 cursor-pointer flex justify-between items-center transition-all group"
-                >
-                  <div>
-                    <p className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition-colors">{cmd.label}</p>
-                    <p className="text-[11px] text-slate-400">{cmd.desc}</p>
-                  </div>
-                  <span className="text-xs text-slate-500 group-hover:text-white transition-colors">↵</span>
-                </div>
-              ))}
-            </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => handleGoogleAuth("signup")}
+                className="w-full flex items-center justify-center gap-3 p-3.5 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs transition-all shadow-sm active:scale-95"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.3 8.9 5 12 5z" />
+                  <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z" />
+                  <path fill="#FBBC05" d="M5.3 14.7c-.2-.7-.4-1.5-.4-2.7s.1-2 .4-2.7L1.6 6.4C.6 8.3 0 10.1 0 12s.6 3.7 1.6 5.6l3.7-2.9z" />
+                  <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.3-6.7-5.3L1.6 16C3.5 19.8 7.4 23 12 23z" />
+                </svg>
+                <span>Sign up with Google account</span>
+              </button>
 
-            <div className="p-3 bg-slate-950/80 border-t border-slate-800 text-center">
-              <p className="text-[11px] text-slate-500">Press anywhere outside or click ESC to dismiss</p>
+              <button
+                onClick={() => handleGoogleAuth("login")}
+                className="w-full flex items-center justify-center gap-3 p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-white font-bold text-xs transition-all active:scale-95"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.3 8.9 5 12 5z" />
+                  <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z" />
+                  <path fill="#FBBC05" d="M5.3 14.7c-.2-.7-.4-1.5-.4-2.7s.1-2 .4-2.7L1.6 6.4C.6 8.3 0 10.1 0 12s.6 3.7 1.6 5.6l3.7-2.9z" />
+                  <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.3-6.7-5.3L1.6 16C3.5 19.8 7.4 23 12 23z" />
+                </svg>
+                <span>Log in with Google (Already have account)</span>
+              </button>
             </div>
           </div>
         </div>
