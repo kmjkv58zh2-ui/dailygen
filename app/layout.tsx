@@ -136,85 +136,235 @@ export default function RootLayout({
             (function() {
               var themeStyles = {
                 default: "",
+
+                /* ========================================================
+                   BABY PINK (High Contrast & Crisp Visibility)
+                ======================================================== */
                 pink: \`
                   html, body, main, [class*="min-h-screen"] {
                     background: #fdf2f8 !important;
                     background-color: #fdf2f8 !important;
-                    color: #581c87 !important;
+                    color: #500724 !important;
                   }
                   aside, nav, [class*="w-64"] {
                     background-color: #fce7f3 !important;
-                    border-color: #fbcfe8 !important;
+                    border-color: #f472b6 !important;
                   }
-                  aside h1, aside h2, aside span, aside p {
+                  aside h1, aside span, aside p {
                     color: #831843 !important;
                   }
-                  aside button, aside a {
-                    background-color: transparent !important;
-                    color: #831843 !important;
-                    border: 1px solid transparent !important;
+                  /* Sidebar buttons */
+                  aside button {
+                    background-color: #ffffff !important;
+                    color: #9d174d !important;
+                    border: 1px solid #fbcfe8 !important;
                   }
-                  aside button:hover, aside a:hover {
-                    background-color: #f472b6 !important;
+                  aside button span {
+                    color: #9d174d !important;
+                  }
+                  aside button.bg-slate-800, aside button[class*="bg-slate-800"] {
+                    background-color: #be185d !important;
                     color: #ffffff !important;
-                    border-color: #ec4899 !important;
+                    border-color: #be185d !important;
+                  }
+                  aside button.bg-slate-800 span, aside button[class*="bg-slate-800"] span {
+                    color: #ffffff !important;
                   }
                   header, [class*="border-b"] {
                     background-color: #fdf2f8 !important;
                     border-color: #fbcfe8 !important;
                   }
+                  header span, header div {
+                    color: #831843 !important;
+                  }
+                  /* Headings & Labels */
                   h1, h2, h3, h4, [class*="text-white"], [class*="text-slate-100"] {
-                    color: #4a044e !important;
+                    color: #500724 !important;
+                  }
+                  label, [class*="uppercase"] {
+                    color: #831843 !important;
+                    font-weight: 800 !important;
                   }
                   p, span, [class*="text-slate-400"] {
                     color: #701a75 !important;
                   }
-                  [class*="text-amber-"], [class*="text-yellow-"] {
-                    color: #9d174d !important;
-                  }
+                  /* Cards & Containers */
                   [class*="bg-slate-900"], [class*="bg-slate-950"], [class*="border-slate-800"] {
                     background-color: #ffffff !important;
                     border-color: #fbcfe8 !important;
-                    box-shadow: 0 4px 14px rgba(236, 72, 153, 0.08) !important;
+                    box-shadow: 0 4px 14px rgba(219, 39, 119, 0.08) !important;
                   }
-                  main button[type="submit"] {
-                    background-color: #db2777 !important;
-                    color: #ffffff !important;
+                  /* Input & Textareas */
+                  input, textarea, select {
+                    background-color: #ffffff !important;
+                    border: 1px solid #f472b6 !important;
+                    color: #500724 !important;
+                  }
+                  input::placeholder, textarea::placeholder {
+                    color: #a21caf !important;
+                  }
+                  /* Pill buttons (Outstanding, Great, Neutral, etc.) */
+                  [class*="bg-slate-800"]:not(aside button) {
+                    background-color: #fce7f3 !important;
+                    color: #831843 !important;
+                    border: 1px solid #f472b6 !important;
+                    font-weight: 700 !important;
                   }
                 \`,
+
+                /* ========================================================
+                   BABY BLUE (High Contrast & Crisp Visibility)
+                ======================================================== */
                 blue: \`
                   html, body, main, [class*="min-h-screen"] {
                     background: #f0f9ff !important;
                     background-color: #f0f9ff !important;
-                    color: #0f172a !important;
+                    color: #082f49 !important;
                   }
                   aside, nav, [class*="w-64"] {
                     background-color: #e0f2fe !important;
-                    border-color: #bae6fd !important;
+                    border-color: #38bdf8 !important;
                   }
-                  aside h1, aside h2, aside span, aside p {
+                  aside h1, aside span, aside p {
                     color: #0c4a6e !important;
+                  }
+                  /* Sidebar buttons */
+                  aside button {
+                    background-color: #ffffff !important;
+                    color: #0369a1 !important;
+                    border: 1px solid #bae6fd !important;
+                  }
+                  aside button span {
+                    color: #0369a1 !important;
+                  }
+                  aside button.bg-slate-800, aside button[class*="bg-slate-800"] {
+                    background-color: #0284c7 !important;
+                    color: #ffffff !important;
+                    border-color: #0284c7 !important;
+                  }
+                  aside button.bg-slate-800 span, aside button[class*="bg-slate-800"] span {
+                    color: #ffffff !important;
                   }
                   header, [class*="border-b"] {
                     background-color: #f0f9ff !important;
                     border-color: #bae6fd !important;
                   }
+                  header span, header div {
+                    color: #0c4a6e !important;
+                  }
+                  /* Headings & Labels */
                   h1, h2, h3, h4, [class*="text-white"], [class*="text-slate-100"] {
                     color: #082f49 !important;
                   }
-                  p, span, [class*="text-slate-400"] {
-                    color: #334155 !important;
+                  label, [class*="uppercase"] {
+                    color: #0369a1 !important;
+                    font-weight: 800 !important;
                   }
+                  p, span, [class*="text-slate-400"] {
+                    color: #1e3a8a !important;
+                  }
+                  /* Cards & Containers */
                   [class*="bg-slate-900"], [class*="bg-slate-950"], [class*="border-slate-800"] {
                     background-color: #ffffff !important;
                     border-color: #bae6fd !important;
                     box-shadow: 0 4px 14px rgba(2, 132, 199, 0.08) !important;
                   }
-                  main button[type="submit"] {
-                    background-color: #0284c7 !important;
-                    color: #ffffff !important;
+                  /* Inputs & Textareas */
+                  input, textarea, select {
+                    background-color: #ffffff !important;
+                    border: 1px solid #38bdf8 !important;
+                    color: #082f49 !important;
+                  }
+                  input::placeholder, textarea::placeholder {
+                    color: #0284c7 !important;
+                  }
+                  /* Pill buttons (Outstanding, Great, Neutral, etc.) */
+                  [class*="bg-slate-800"]:not(aside button) {
+                    background-color: #e0f2fe !important;
+                    color: #0369a1 !important;
+                    border: 1px solid #7dd3fc !important;
+                    font-weight: 700 !important;
                   }
                 \`,
+
+                /* ========================================================
+                   WHITE (Clean Modern Minimalist)
+                ======================================================== */
+                white: \`
+                  html, body, main, [class*="min-h-screen"] {
+                    background: #f8fafc !important;
+                    background-color: #f8fafc !important;
+                    color: #0f172a !important;
+                  }
+                  aside, nav, [class*="w-64"] {
+                    background-color: #ffffff !important;
+                    border-color: #cbd5e1 !important;
+                  }
+                  aside h1, aside span, aside p {
+                    color: #0f172a !important;
+                  }
+                  /* Sidebar buttons */
+                  aside button {
+                    background-color: #f8fafc !important;
+                    color: #334155 !important;
+                    border: 1px solid #e2e8f0 !important;
+                  }
+                  aside button span {
+                    color: #334155 !important;
+                  }
+                  aside button.bg-slate-800, aside button[class*="bg-slate-800"] {
+                    background-color: #0f172a !important;
+                    color: #ffffff !important;
+                    border-color: #0f172a !important;
+                  }
+                  aside button.bg-slate-800 span, aside button[class*="bg-slate-800"] span {
+                    color: #ffffff !important;
+                  }
+                  header, [class*="border-b"] {
+                    background-color: #ffffff !important;
+                    border-color: #e2e8f0 !important;
+                  }
+                  header span, header div {
+                    color: #0f172a !important;
+                  }
+                  /* Headings & Labels */
+                  h1, h2, h3, h4, [class*="text-white"], [class*="text-slate-100"] {
+                    color: #020617 !important;
+                  }
+                  label, [class*="uppercase"] {
+                    color: #1e293b !important;
+                    font-weight: 800 !important;
+                  }
+                  p, span, [class*="text-slate-400"] {
+                    color: #475569 !important;
+                  }
+                  /* Cards & Containers */
+                  [class*="bg-slate-900"], [class*="bg-slate-950"], [class*="border-slate-800"] {
+                    background-color: #ffffff !important;
+                    border-color: #cbd5e1 !important;
+                    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05) !important;
+                  }
+                  /* Inputs & Textareas */
+                  input, textarea, select {
+                    background-color: #ffffff !important;
+                    border: 1px solid #94a3b8 !important;
+                    color: #020617 !important;
+                  }
+                  input::placeholder, textarea::placeholder {
+                    color: #64748b !important;
+                  }
+                  /* Pill buttons (Outstanding, Great, Neutral, etc.) */
+                  [class*="bg-slate-800"]:not(aside button) {
+                    background-color: #f1f5f9 !important;
+                    color: #1e293b !important;
+                    border: 1px solid #cbd5e1 !important;
+                    font-weight: 700 !important;
+                  }
+                \`,
+
+                /* ========================================================
+                   BLACK (OLED Deep Dark)
+                ======================================================== */
                 black: \`
                   html, body, main, [class*="min-h-screen"], aside, nav, header {
                     background: #000000 !important;
@@ -226,34 +376,10 @@ export default function RootLayout({
                     background-color: #09090b !important;
                     border-color: #27272a !important;
                   }
-                \`,
-                white: \`
-                  html, body, main, [class*="min-h-screen"] {
-                    background: #f8fafc !important;
-                    background-color: #f8fafc !important;
-                    color: #0f172a !important;
-                  }
-                  aside, nav, [class*="w-64"] {
-                    background-color: #ffffff !important;
-                    border-color: #e2e8f0 !important;
-                  }
-                  aside h1, aside span, aside p {
-                    color: #0f172a !important;
-                  }
-                  header, [class*="border-b"] {
-                    background-color: #ffffff !important;
-                    border-color: #e2e8f0 !important;
-                  }
-                  h1, h2, h3, h4, [class*="text-white"], [class*="text-slate-100"] {
-                    color: #020617 !important;
-                  }
-                  p, span, [class*="text-slate-400"] {
-                    color: #475569 !important;
-                  }
-                  [class*="bg-slate-900"], [class*="bg-slate-950"], [class*="border-slate-800"] {
-                    background-color: #ffffff !important;
-                    border-color: #e2e8f0 !important;
-                    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
+                  input, textarea, select {
+                    background-color: #000000 !important;
+                    border: 1px solid #27272a !important;
+                    color: #ffffff !important;
                   }
                 \`
               };
@@ -291,7 +417,7 @@ export default function RootLayout({
                   tag.id = 'dailygen-font-css';
                   document.head.appendChild(tag);
                 }
-                tag.innerHTML = 'body, main, aside, header, h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, select { font-family: ' + font + ' !important; }';
+                tag.innerHTML = 'body, main, aside, header, h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, select, textarea { font-family: ' + font + ' !important; }';
               }
 
               var savedT = localStorage.getItem('dg-t') || 'default';
